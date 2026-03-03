@@ -18,6 +18,6 @@ func loadRoutes() *chi.Mux {
 }
 
 func loadSbomRoutes(r chi.Router) {
-	// orderHandler := &handler.Order{}
+	// - /dependencies?repo=username/repoName
 	r.Get("/dependencies", handler.ExtractDependencies)
 }

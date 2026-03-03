@@ -7,7 +7,7 @@ import (
 )
 
 func ExtractDependenciesManual(repo string) ([]Package, error) {
-	dir, err := cloneRepo(repo)
+	dir, err := getRepo(repo)
 	if err != nil {
 		return nil, err
 	}
@@ -27,19 +27,34 @@ func ExtractDependenciesManual(repo string) ([]Package, error) {
 
 	return ExtractDependencies(f)
 }
-func cloneRepo(repo string) (string, error) {
+
+func getRepo(repo string) (string, error) {
 	dir := "/tmp/repos/" + repo
+	_, err := os.Stat(dir)
 
-	//remove dir if exists already to replace with updated contents
-	os.RemoveAll(dir)
+	if os.IsNotExist(err) {
+		fmt.Println("Cloning repo...")
+		cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/"+repo+".git", dir)
+		err := cmd.Run()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		fmt.Println("Repo exists... running git fetch")
+		fetchCmd := exec.Command("git", "-C", dir, "fetch", "--depth", "1")
+		if output, err := fetchCmd.CombinedOutput(); err != nil {
+			return fmt.Sprintf("fetch failed: %v\n%s", err, output), err
+		}
 
-	cmd := exec.Command("git", "clone", "https://github.com/"+repo+".git", dir)
-	err := cmd.Run()
-	if err != nil {
-		return "", err
+		resetCmd := exec.Command("git", "-C", dir, "reset", "--hard", "origin/HEAD")
+		if output, err := resetCmd.CombinedOutput(); err != nil {
+			return fmt.Sprintf("reset failed: %v\n%s", err, output), nil
+		}
+
 	}
 	return dir, nil
 }
+
 func generateSbom(repoDir, sbomPath string) error {
 	cmd := exec.Command(
 		"syft",
