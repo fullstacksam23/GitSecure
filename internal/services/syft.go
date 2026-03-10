@@ -32,6 +32,7 @@ func getRepo(repo string) (string, error) {
 	dir := "/tmp/repos/" + repo
 	_, err := os.Stat(dir)
 
+	//repo doesnt exist locally
 	if os.IsNotExist(err) {
 		fmt.Println("Cloning repo...")
 		cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/"+repo+".git", dir)

@@ -12,12 +12,7 @@ func loadRoutes() *chi.Mux {
 	router.Use(middleware.Logger)
 
 	router.Get("/health", handler.HealthHandler)
-	router.Route("/sbom", loadSbomRoutes)
+	router.Post("/scan", handler.StartScan)
 
 	return router
-}
-
-func loadSbomRoutes(r chi.Router) {
-	// - /dependencies?repo=username/repoName
-	r.Get("/dependencies", handler.ExtractDependencies)
 }
