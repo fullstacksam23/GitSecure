@@ -1,62 +1,74 @@
 package services
 
 import (
-	"encoding/json"
-	"io"
-
-	"github.com/fullstacksam23/GitSecure/internal/models"
+	"fmt"
+	"os"
+	"os/exec"
 )
 
-type Package struct {
-	Name             string
-	Version          string
-	ReferenceType    string
-	ReferenceLocator string
-}
-
-func parseSbom(r io.Reader) (models.SPDXDocument, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return models.SPDXDocument{}, err
-	}
-
-	// github sbom formatting returns a SBOMResponse
-	var wrapper models.SBOMResponse
-	if err := json.Unmarshal(data, &wrapper); err == nil && len(wrapper.SBOM.Packages) > 0 {
-		return wrapper.SBOM, nil
-	}
-
-	// manual syft sbom formatting returns a SPDXDocument
-	var doc models.SPDXDocument
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return models.SPDXDocument{}, err
-	}
-
-	return doc, nil
-}
-
-func ExtractDependencies(r io.Reader) ([]Package, error) {
-	doc, err := parseSbom(r)
+func ExtractDependenciesManual(repo string) ([]Package, error) {
+	dir, err := getRepo(repo)
 	if err != nil {
 		return nil, err
 	}
 
-	packages := []Package{}
+	sbomPath := dir + "/sbom.json"
 
-	for _, p := range doc.Packages {
-		var refType, refLoc string
-		if len(p.ExternalRefs) > 0 {
-			refType = p.ExternalRefs[0].ReferenceType
-			refLoc = p.ExternalRefs[0].ReferenceLocator
-		}
-
-		packages = append(packages, Package{
-			Name:             p.Name,
-			Version:          p.VersionInfo,
-			ReferenceType:    refType,
-			ReferenceLocator: refLoc,
-		})
+	err = generateSbom(dir, sbomPath)
+	if err != nil {
+		return nil, err
 	}
 
-	return packages, nil
+	f, err := os.Open(sbomPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return ExtractDependencies(f)
+}
+
+func getRepo(repo string) (string, error) {
+	dir := "/tmp/repos/" + repo
+	_, err := os.Stat(dir)
+
+	//repo doesnt exist locally
+	if os.IsNotExist(err) {
+		fmt.Println("Cloning repo...")
+		cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/"+repo+".git", dir)
+		err := cmd.Run()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		fmt.Println("Repo exists... running git fetch")
+		fetchCmd := exec.Command("git", "-C", dir, "fetch", "--depth", "1")
+		if output, err := fetchCmd.CombinedOutput(); err != nil {
+			return fmt.Sprintf("fetch failed: %v\n%s", err, output), err
+		}
+
+		resetCmd := exec.Command("git", "-C", dir, "reset", "--hard", "origin/HEAD")
+		if output, err := resetCmd.CombinedOutput(); err != nil {
+			return fmt.Sprintf("reset failed: %v\n%s", err, output), nil
+		}
+
+	}
+	return dir, nil
+}
+
+func generateSbom(repoDir, sbomPath string) error {
+	cmd := exec.Command(
+		"syft",
+		repoDir,
+		"-o",
+		"spdx-json="+sbomPath,
+	)
+
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("SBOM generated:", sbomPath)
+	return nil
 }
