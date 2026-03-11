@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
@@ -91,7 +92,6 @@ func ExtractDependencies(r io.Reader) ([]Package, error) {
 	}
 
 	packages := []Package{}
-
 	for _, p := range doc.Packages {
 		var refType, refLoc string
 		if len(p.ExternalRefs) > 0 {
@@ -110,6 +110,9 @@ func ExtractDependencies(r io.Reader) ([]Package, error) {
 		decodedRefLoc, err := url.QueryUnescape(refLoc)
 		if err != nil {
 			return nil, err
+		}
+		if decodedRefLoc == "" || strings.HasPrefix(decodedRefLoc, "pkg:github") {
+			continue
 		}
 		packages = append(packages, Package{
 			Name:             p.Name,
