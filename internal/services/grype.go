@@ -39,3 +39,11 @@ func GrypeScan(sbom []byte) ([]byte, error) {
 
 	return output, nil
 }
+
+func ParseGrype(output []byte) (models.GrypeResponse, error) {
+
+	var resp models.GrypeResponse
+
+	err := json.Unmarshal(output, &resp)
+	return resp, err
+}

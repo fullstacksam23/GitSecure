@@ -1,0 +1,136 @@
+package services
+
+import (
+	"strings"
+
+	"github.com/fullstacksam23/GitSecure/internal/models"
+)
+
+type VulnGraph struct {
+	adj map[string]map[string]struct{}
+}
+
+func NewVulnGraph() *VulnGraph {
+	return &VulnGraph{
+		adj: make(map[string]map[string]struct{}),
+	}
+}
+
+func (g *VulnGraph) AddEdge(a, b string) {
+
+	if g.adj[a] == nil {
+		g.adj[a] = map[string]struct{}{}
+	}
+
+	if g.adj[b] == nil {
+		g.adj[b] = map[string]struct{}{}
+	}
+
+	g.adj[a][b] = struct{}{}
+	g.adj[b][a] = struct{}{}
+}
+
+func BuildVulnGraph(advisories map[string]models.OSVAdvisory) *VulnGraph {
+
+	graph := NewVulnGraph()
+
+	for id, adv := range advisories {
+
+		if graph.adj[id] == nil {
+			graph.adj[id] = map[string]struct{}{}
+		}
+
+		for _, alias := range adv.Aliases {
+			graph.AddEdge(id, alias)
+		}
+
+	}
+
+	return graph
+}
+func chooseCanonical(ids []string) string {
+
+	for _, id := range ids {
+		if strings.HasPrefix(id, "CVE-") {
+			return id
+		}
+	}
+
+	for _, id := range ids {
+		if strings.HasPrefix(id, "GHSA-") {
+			return id
+		}
+	}
+
+	return ids[0]
+}
+
+func (g *VulnGraph) CanonicalMap() map[string]string {
+
+	visited := map[string]bool{}
+	result := map[string]string{}
+
+	for node := range g.adj {
+
+		if visited[node] {
+			continue
+		}
+
+		stack := []string{node}
+		component := []string{}
+
+		for len(stack) > 0 {
+
+			n := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			if visited[n] {
+				continue
+			}
+
+			visited[n] = true
+			component = append(component, n)
+
+			for neighbor := range g.adj[n] {
+				stack = append(stack, neighbor)
+			}
+		}
+
+		canonical := chooseCanonical(component)
+
+		for _, id := range component {
+			result[id] = canonical
+		}
+	}
+
+	return result
+}
+
+func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []models.UnifiedVuln {
+
+	var vulns []models.UnifiedVuln
+
+	for _, match := range grype.Matches {
+
+		id := match.Vulnerability.ID
+
+		if canonicalID, ok := canonical[id]; ok && canonicalID != "" {
+			id = canonicalID
+		}
+
+		v := models.UnifiedVuln{
+			ID:         id,
+			Package:    match.Artifact.Name,
+			Version:    match.Artifact.Version,
+			Severity:   match.Vulnerability.Severity,
+			Summary:    match.Vulnerability.Description,
+			Urls:       match.Vulnerability.Urls,
+			FixVersion: match.Vulnerability.Fix.Versions,
+			Source:     "grype",
+		}
+
+		vulns = append(vulns, v)
+	}
+
+	return vulns
+}

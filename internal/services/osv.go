@@ -3,56 +3,112 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/fullstacksam23/GitSecure/internal/models"
 )
 
-type Purl struct {
-	Purl string `json:"purl"`
+var osvHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+	},
 }
 
-type PackageQuery struct {
-	Package Purl `json:"package"`
+func FetchAllOSVAdvisories(pkgs []Package) (map[string]models.OSVAdvisory, error) {
+
+	advisories := make(map[string]models.OSVAdvisory)
+	seen := map[string]bool{}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	sem := make(chan struct{}, 10)
+
+	resp, err := batchProcess(pkgs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, result := range resp.Results {
+		for _, vuln := range result.Vulns {
+
+			if seen[vuln.Id] {
+				continue
+			}
+			seen[vuln.Id] = true
+
+			wg.Add(1)
+
+			go func(id string) {
+				defer wg.Done()
+
+				sem <- struct{}{}
+				defer func() { <-sem }()
+
+				adv, err := getOSVAdvisory(id)
+				if err != nil {
+					fmt.Println("OSV advisory fetch failed:", id, err)
+					return
+				}
+
+				mu.Lock()
+				advisories[id] = adv
+				mu.Unlock()
+
+			}(vuln.Id)
+		}
+	}
+
+	wg.Wait()
+
+	return advisories, nil
 }
 
-type OSVRequest struct {
-	Queries []PackageQuery `json:"queries"`
+func getOSVAdvisory(id string) (models.OSVAdvisory, error) {
+	var advisory models.OSVAdvisory
+	url := "https://api.osv.dev/v1/vulns/" + id
+
+	resp, err := osvHTTPClient.Get(url)
+	if err != nil {
+		return advisory, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return advisory, fmt.Errorf("OSV API returned status %d", resp.StatusCode)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&advisory)
+	return advisory, err
 }
 
-type Vulnerability struct {
-	Id       string `json:"id"`
-	Modified string `json:"modified"`
-}
-
-type Result struct {
-	Vulns []Vulnerability `json:"vulns"`
-}
-
-type OSVResponse struct {
-	Results []Result `json:"results"`
-}
-
-var osvUrl = "https://api.osv.dev/v1/querybatch"
-
-func OSVScan(pkgs []Package) (OSVResponse, error) {
-	var osvResp OSVResponse
+func batchProcess(pkgs []Package) (models.OSVResponse, error) {
+	osvUrl := "https://api.osv.dev/v1/querybatch"
+	var osvResp models.OSVResponse
 
 	payload := createPayload(pkgs)
-
-	var httpClient = &http.Client{
-		Timeout: time.Second * 10,
-	}
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return osvResp, err
 	}
-	resp, err := httpClient.Post(osvUrl, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := osvHTTPClient.Post(osvUrl, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return osvResp, err
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return osvResp, fmt.Errorf("OSV batch query failed: %d", resp.StatusCode)
+	}
 
 	err = json.NewDecoder(resp.Body).Decode(&osvResp)
 	if err != nil {
@@ -61,15 +117,15 @@ func OSVScan(pkgs []Package) (OSVResponse, error) {
 	return osvResp, nil
 }
 
-func createPayload(pkgs []Package) OSVRequest {
-	queries := make([]PackageQuery, len(pkgs))
+func createPayload(pkgs []Package) models.OSVRequest {
+	queries := make([]models.PackageQuery, len(pkgs))
 
 	for i, pkg := range pkgs {
-		queries[i] = PackageQuery{
-			Package: Purl{
+		queries[i] = models.PackageQuery{
+			Package: models.Purl{
 				Purl: pkg.ReferenceLocator,
 			},
 		}
 	}
-	return OSVRequest{Queries: queries}
+	return models.OSVRequest{Queries: queries}
 }
