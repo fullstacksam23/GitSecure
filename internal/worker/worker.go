@@ -4,13 +4,12 @@ import (
 	"context"
 	"log"
 
-	"github.com/fullstacksam23/GitSecure/internal/queue"
 	"github.com/fullstacksam23/GitSecure/internal/services"
 )
 
 func StartWorker(ctx context.Context) {
 
-	q := queue.NewRedisQueue("localhost:6379", "scan_queue")
+	q := NewRedisQueue("localhost:6379", "scan_queue")
 
 	log.Println("Worker started...")
 

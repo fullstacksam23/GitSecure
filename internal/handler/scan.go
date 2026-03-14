@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
-	"github.com/fullstacksam23/GitSecure/internal/queue"
+	"github.com/fullstacksam23/GitSecure/internal/worker"
 	"github.com/google/uuid"
 )
 
@@ -28,7 +28,7 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		Repo:  req.Repo,
 	}
 
-	q := queue.NewRedisQueue("localhost:6379", "scan_queue")
+	q := worker.NewRedisQueue("localhost:6379", "scan_queue")
 
 	err = q.Enqueue(ctx, job)
 	if err != nil {

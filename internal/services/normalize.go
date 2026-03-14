@@ -106,6 +106,24 @@ func (g *VulnGraph) CanonicalMap() map[string]string {
 	return result
 }
 
+func CanonicalizeAdvisories(advisories map[string]models.OSVAdvisory, canonical map[string]string) map[string]models.OSVAdvisory {
+
+	newMap := map[string]models.OSVAdvisory{}
+
+	for id, adv := range advisories {
+
+		canonicalID := id
+
+		if c, ok := canonical[id]; ok {
+			canonicalID = c
+		}
+
+		newMap[canonicalID] = adv
+	}
+
+	return newMap
+}
+
 func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []models.UnifiedVuln {
 
 	var vulns []models.UnifiedVuln

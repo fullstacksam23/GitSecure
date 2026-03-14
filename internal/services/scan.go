@@ -14,6 +14,7 @@ func RunFullScan(repo string) error {
 	log.Println("Dependencies Extracted: ")
 
 	advisories, err := FetchAllOSVAdvisories(pkgs)
+	// log.Println(advisories)
 	if err != nil {
 		return err
 	}
@@ -22,6 +23,8 @@ func RunFullScan(repo string) error {
 	graph := BuildVulnGraph(advisories)
 
 	canonicalMap := graph.CanonicalMap()
+
+	advisories = CanonicalizeAdvisories(advisories, canonicalMap)
 
 	// Run grype
 	raw, err := GrypeScan(sbom)

@@ -72,6 +72,9 @@ func FetchAllOSVAdvisories(pkgs []Package) (map[string]models.OSVAdvisory, error
 
 func getOSVAdvisory(id string) (models.OSVAdvisory, error) {
 	var advisory models.OSVAdvisory
+	if id == "" || len(id) == 0 {
+		return advisory, nil
+	}
 	url := "https://api.osv.dev/v1/vulns/" + id
 
 	resp, err := osvHTTPClient.Get(url)
