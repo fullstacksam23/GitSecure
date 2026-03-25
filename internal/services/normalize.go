@@ -131,22 +131,37 @@ func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []m
 	for _, match := range grype.Matches {
 
 		id := match.Vulnerability.ID
-
 		if canonicalID, ok := canonical[id]; ok && canonicalID != "" {
 			id = canonicalID
 		}
 
-		v := models.UnifiedVuln{
-			ID:         id,
-			Package:    match.Artifact.Name,
-			Version:    match.Artifact.Version,
-			Severity:   match.Vulnerability.Severity,
-			Summary:    match.Vulnerability.Description,
-			Urls:       match.Vulnerability.Urls,
-			FixVersion: match.Vulnerability.Fix.Versions,
-			Source:     "grype",
+		// Extract match details safely
+		var constraint, matchType string
+		if len(match.MatchDetails) > 0 {
+			constraint = match.MatchDetails[0].Found.VersionConstraint
+			matchType = match.MatchDetails[0].Type
 		}
 
+		v := models.UnifiedVuln{
+			ID:       id,
+			Package:  match.Artifact.Name,
+			Version:  match.Artifact.Version,
+			Severity: match.Vulnerability.Severity,
+			Summary:  match.Vulnerability.Description,
+			Urls:     match.Vulnerability.Urls,
+
+			FixVersion: match.Vulnerability.Fix.Versions,
+			FixState:   match.Vulnerability.Fix.State,
+
+			Risk:      match.Vulnerability.Risk,
+			Namespace: match.Vulnerability.Namespace,
+
+			MatchType:  matchType,
+			Constraint: constraint,
+
+			DataSource: match.Vulnerability.DataSource,
+			Source:     "grype",
+		}
 		vulns = append(vulns, v)
 	}
 

@@ -1,11 +1,12 @@
 package services
 
 import (
+	"context"
 	"log"
 	"strconv"
 )
 
-func RunFullScan(repo string) error {
+func RunFullScan(ctx context.Context, repo string) error {
 
 	pkgs, sbom, err := getDependencies(repo)
 	if err != nil {
@@ -26,6 +27,8 @@ func RunFullScan(repo string) error {
 
 	advisories = CanonicalizeAdvisories(advisories, canonicalMap)
 
+	log.Println("Setting advisory id with right priority...")
+
 	// Run grype
 	raw, err := GrypeScan(sbom)
 	if err != nil {
@@ -43,7 +46,8 @@ func RunFullScan(repo string) error {
 	vulns := NormalizeGrype(grypeResp, canonicalMap)
 
 	//Enrich grype with OSV data
-	vulns = MergeOSVData(vulns, advisories, canonicalMap)
+	vulns = DeduplicateVulns(MergeOSVData(vulns, advisories, canonicalMap))
+
 	for _, v := range vulns {
 		log.Println(v.ID, v.Package, v.Version, v.Severity, v.Source)
 		log.Println("URLS count:" + strconv.Itoa(len(v.Urls)))

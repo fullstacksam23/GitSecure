@@ -32,7 +32,7 @@ func GrypeScan(sbom []byte) ([]byte, error) {
 
 	cmd := exec.Command("grype", "sbom:"+sbomPath, "-o", "json")
 
-	output, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput() //returns both the std output and err
 	if err != nil {
 		return output, err
 	}

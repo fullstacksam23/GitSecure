@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/models"
 	"github.com/fullstacksam23/GitSecure/internal/worker"
 	"github.com/google/uuid"
@@ -24,8 +25,9 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 
 	job := models.ScanJob{
-		JobID: uuid.New().String(),
-		Repo:  req.Repo,
+		JobID:  uuid.New().String(),
+		Repo:   req.Repo,
+		Status: "queued",
 	}
 
 	q := worker.NewRedisQueue("localhost:6379", "scan_queue")
@@ -34,6 +36,11 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "failed to enqueue job", http.StatusInternalServerError)
 		return
+	}
+
+	err = db.InsertJob(job)
+	if err != nil {
+		http.Error(w, "Error updating supabase job status", http.StatusInternalServerError)
 	}
 
 	// return response

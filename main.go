@@ -3,17 +3,33 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 
 	"github.com/fullstacksam23/GitSecure/internal/api"
+	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/worker"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 
 	defer cancel() // cancels the current context at the end of the current function
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
+	//Init DB
+	url := os.Getenv("SUPABASE_URL")
+	service_role_key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	err = db.InitSupabase(url, service_role_key)
+	if err != nil {
+		log.Fatal("Failed to connect to Supabase:", err)
+	}
 
 	mode := os.Getenv("MODE")
 
@@ -25,7 +41,7 @@ func main() {
 
 	fmt.Println("Starting API server")
 	app := api.New()
-	err := app.Start(ctx)
+	err = app.Start(ctx)
 	if err != nil {
 		fmt.Println("server failed to start")
 	}

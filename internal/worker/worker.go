@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/services"
 )
 
@@ -36,15 +37,32 @@ func StartWorker(ctx context.Context) {
 			if job == nil {
 				continue
 			}
+
+			err = db.UpdateJobStatus(job.JobID, map[string]interface{}{
+				"status": "running",
+			})
+			if err != nil {
+				log.Println("Queue error:", err)
+				continue
+			}
 			log.Println("Processing job:", job.JobID)
 
-			err = services.RunFullScan(job.Repo)
+			err = services.RunFullScan(ctx, job.Repo)
 			if err != nil {
 				log.Println("Scan failed:", err)
 				continue
 			}
 
 			log.Println("Scan complete:", job.JobID)
+
+			err = db.UpdateJobStatus(job.JobID, map[string]interface{}{
+				"status": "complete",
+			})
+			if err != nil {
+				log.Println("Queue error:", err)
+				continue
+			}
+			//TODO: ERROR HANDLING AND PASS CONTEXT TO THE DB UPDATE AND INTSERT FUNCTIONS
 		}
 	}
 }
