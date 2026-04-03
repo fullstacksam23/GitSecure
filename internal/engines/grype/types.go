@@ -1,4 +1,4 @@
-package models
+package grype
 
 type GrypeResponse struct {
 	Matches []Match `json:"matches"`

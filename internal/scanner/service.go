@@ -1,4 +1,4 @@
-package services
+package scanner
 
 import (
 	"context"
@@ -6,49 +6,52 @@ import (
 	"strconv"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
+	"github.com/fullstacksam23/GitSecure/internal/engines/grype"
+	"github.com/fullstacksam23/GitSecure/internal/engines/osv"
+	"github.com/fullstacksam23/GitSecure/internal/engines/sbom"
 )
 
 func RunFullScan(ctx context.Context, repo, jobID string) error {
 
-	pkgs, sbom, err := getDependencies(repo)
+	pkgs, sbom, err := sbom.GetDependencies(repo)
 	if err != nil {
 		return err
 	}
 	log.Println("Dependencies Extracted: ")
 
-	advisories, err := FetchAllOSVAdvisories(pkgs)
+	advisories, err := osv.FetchAllOSVAdvisories(pkgs)
 	// log.Println(advisories)
 	if err != nil {
 		return err
 	}
 	log.Println("OSV API queried...")
 
-	graph := BuildVulnGraph(advisories)
+	graph := osv.BuildVulnGraph(advisories)
 
 	canonicalMap := graph.CanonicalMap()
 
-	advisories = CanonicalizeAdvisories(advisories, canonicalMap)
+	advisories = osv.CanonicalizeAdvisories(advisories, canonicalMap)
 
 	log.Println("Setting advisory id with right priority...")
 
 	// Run grype
-	raw, err := GrypeScan(sbom)
+	raw, err := grype.GrypeScan(sbom)
 	if err != nil {
 		log.Println("Grype error:", string(raw))
 		return err
 	}
 
 	// Parse grype JSON
-	grypeResp, err := ParseGrype(raw)
+	grypeResp, err := grype.ParseGrype(raw)
 	if err != nil {
 		return err
 	}
 	log.Println("Grype response generated...")
 	// Normalize IDs
-	vulns := NormalizeGrype(grypeResp, canonicalMap, jobID)
+	vulns := grype.NormalizeGrype(grypeResp, canonicalMap, jobID)
 
 	//Enrich grype with OSV data
-	vulns = DeduplicateVulns(MergeOSVData(vulns, advisories, canonicalMap))
+	vulns = osv.MergeOSVData(vulns, advisories, canonicalMap)
 
 	log.Println("Vulns list generated")
 

@@ -5,12 +5,13 @@ import (
 	"log"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
-	"github.com/fullstacksam23/GitSecure/internal/services"
+	"github.com/fullstacksam23/GitSecure/internal/redis"
+	"github.com/fullstacksam23/GitSecure/internal/scanner"
 )
 
 func StartWorker(ctx context.Context) {
 
-	q := NewRedisQueue("localhost:6379", "scan_queue")
+	q := redis.NewRedisQueue("localhost:6379", "scan_queue")
 
 	log.Println("Worker started...")
 
@@ -47,7 +48,7 @@ func StartWorker(ctx context.Context) {
 			}
 			log.Println("Processing job:", job.JobID)
 
-			err = services.RunFullScan(ctx, job.Repo, job.JobID)
+			err = scanner.RunFullScan(ctx, job.Repo, job.JobID)
 			if err != nil {
 				log.Println("Scan failed:", err)
 				continue

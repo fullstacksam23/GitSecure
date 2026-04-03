@@ -1,4 +1,4 @@
-package services
+package sbom
 
 import (
 	"bytes"
@@ -11,18 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fullstacksam23/GitSecure/internal/core"
 	"github.com/fullstacksam23/GitSecure/internal/models"
 )
 
-type Package struct {
-	Name             string
-	Version          string
-	ReferenceType    string
-	ReferenceLocator string
-}
-
-func getDependencies(repoName string) ([]Package, []byte, error) {
-	var pkgs []Package
+func GetDependencies(repoName string) ([]core.Package, []byte, error) {
+	var pkgs []core.Package
 	log.Println("trying to fetch sbom using github api...")
 	if repoName == "" {
 		return pkgs, nil, errors.New("Repo name null/empty")
@@ -85,13 +79,13 @@ func parseSbom(r io.Reader) (models.SPDXDocument, error) {
 	return doc, nil
 }
 
-func ExtractDependencies(r io.Reader) ([]Package, error) {
+func ExtractDependencies(r io.Reader) ([]core.Package, error) {
 	doc, err := parseSbom(r)
 	if err != nil {
 		return nil, err
 	}
 
-	packages := []Package{}
+	packages := []core.Package{}
 	for _, p := range doc.Packages {
 		var refType, refLoc string
 		if len(p.ExternalRefs) > 0 {
@@ -114,7 +108,7 @@ func ExtractDependencies(r io.Reader) ([]Package, error) {
 		if decodedRefLoc == "" || strings.HasPrefix(decodedRefLoc, "pkg:github") {
 			continue
 		}
-		packages = append(packages, Package{
+		packages = append(packages, core.Package{
 			Name:             p.Name,
 			Version:          p.VersionInfo,
 			ReferenceType:    refType,

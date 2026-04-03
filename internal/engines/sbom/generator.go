@@ -1,12 +1,14 @@
-package services
+package sbom
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/fullstacksam23/GitSecure/internal/core"
 )
 
-func ExtractDependenciesManual(repo string) ([]Package, error) {
+func ExtractDependenciesManual(repo string) ([]core.Package, error) {
 	dir, err := getRepo(repo)
 	if err != nil {
 		return nil, err

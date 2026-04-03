@@ -1,4 +1,4 @@
-package handler
+package scanner
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/models"
-	"github.com/fullstacksam23/GitSecure/internal/worker"
+	"github.com/fullstacksam23/GitSecure/internal/redis"
 	"github.com/google/uuid"
 )
 
@@ -30,7 +30,7 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		Status: "queued",
 	}
 
-	q := worker.NewRedisQueue("localhost:6379", "scan_queue")
+	q := redis.NewRedisQueue("localhost:6379", "scan_queue")
 
 	err = q.Enqueue(ctx, job)
 	if err != nil {
@@ -53,3 +53,32 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		"status": "queued",
 	})
 }
+
+// type Repo struct {
+// 	defaultBranch string `json:"default_branch"`
+// }
+
+// func checkCached(owner, repo string) error {
+// 	repoFullName := owner + "/" + repo
+// 	resp, err := http.Get("https://api.github.com/repos/" + repoFullName)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	var r Repo
+// 	err = json.NewDecoder(resp.Body).Decode(&r)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	//get the default branch
+// 	defaultBranch := r.defaultBranch
+
+// 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s", owner, repo, defaultBranch)
+// 	resp, err = http.Get(url)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
