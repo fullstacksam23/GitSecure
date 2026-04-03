@@ -2,6 +2,7 @@ package models
 
 type UnifiedVuln struct {
 	ID       string   `json:"id"`
+	JobID    string   `json:"job_id"`
 	Package  string   `json:"package"`
 	Version  string   `json:"version"`
 	Severity string   `json:"severity"`
@@ -15,7 +16,7 @@ type UnifiedVuln struct {
 	Namespace string  `json:"namespace"`
 
 	MatchType  string `json:"match_type"`
-	Constraint string `json:"constraint"`
+	Constraint string `json:"version_constraint"`
 
 	DataSource string `json:"data_source"`
 	Source     string `json:"source"`

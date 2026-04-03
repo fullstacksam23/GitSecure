@@ -124,7 +124,7 @@ func CanonicalizeAdvisories(advisories map[string]models.OSVAdvisory, canonical 
 	return newMap
 }
 
-func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []models.UnifiedVuln {
+func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string, jobID string) []models.UnifiedVuln {
 
 	var vulns []models.UnifiedVuln
 
@@ -136,14 +136,11 @@ func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []m
 		}
 
 		// Extract match details safely
-		var constraint, matchType string
-		if len(match.MatchDetails) > 0 {
-			constraint = match.MatchDetails[0].Found.VersionConstraint
-			matchType = match.MatchDetails[0].Type
-		}
+		matchType, constraint := pickBestMatch(match.MatchDetails)
 
 		v := models.UnifiedVuln{
 			ID:       id,
+			JobID:    jobID,
 			Package:  match.Artifact.Name,
 			Version:  match.Artifact.Version,
 			Severity: match.Vulnerability.Severity,
@@ -166,4 +163,29 @@ func NormalizeGrype(grype models.GrypeResponse, canonical map[string]string) []m
 	}
 
 	return vulns
+}
+
+func pickBestMatch(details []models.MatchDetail) (string, string) {
+	bestType := ""
+	constraint := ""
+
+	for _, d := range details {
+		if d.Type == "exact-direct-match" {
+			return d.Type, d.Found.VersionConstraint
+		}
+		if d.Type == "exact-indirect-match" {
+			bestType = d.Type
+			constraint = d.Found.VersionConstraint
+		}
+	}
+
+	if bestType != "" {
+		return bestType, constraint
+	}
+
+	if len(details) > 0 {
+		return details[0].Type, details[0].Found.VersionConstraint
+	}
+
+	return "", ""
 }

@@ -30,7 +30,7 @@ func MergeOSVData(vulns []models.UnifiedVuln, advisories map[string]models.OSVAd
 
 		vulns[i].Urls = addUniqueUrls(vulns[i].Urls, osvUrls)
 
-		if vulns[i].Severity == "" && len(adv.Severity) > 0 {
+		if len(adv.Severity) > 0 {
 			vulns[i].Severity = adv.Severity[0].Score
 		}
 		vulns[i].CWEIDs = adv.DatabaseSpecific.CWEIDs

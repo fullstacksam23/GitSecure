@@ -47,7 +47,7 @@ func StartWorker(ctx context.Context) {
 			}
 			log.Println("Processing job:", job.JobID)
 
-			err = services.RunFullScan(ctx, job.Repo)
+			err = services.RunFullScan(ctx, job.Repo, job.JobID)
 			if err != nil {
 				log.Println("Scan failed:", err)
 				continue

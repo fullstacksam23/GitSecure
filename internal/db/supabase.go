@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/fullstacksam23/GitSecure/internal/models"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -22,16 +23,20 @@ func InitSupabase(url, key string) error {
 	return nil
 }
 
-func InsertVulns(ctx context.Context, vulns interface{}) error {
+func InsertVulns(ctx context.Context, vulns []models.UnifiedVuln) error {
 	if Client == nil {
-		return errors.New("client not initialized")
+		return errors.New("Client not initialized")
 	}
-	_, _, err := Client.
-		From("vulnerabilities").
-		Insert(vulns, false, "", "", "").
-		Execute()
+	if len(vulns) == 0 {
+		log.Println("vulns [] length is zero... No vulns found")
+		return nil
+	}
+	_, _, err := Client.From("vulnerabilities").Insert(vulns, false, "", "", "").Execute()
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func InsertJob(job interface{}) error {

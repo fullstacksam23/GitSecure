@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 	"strconv"
+
+	"github.com/fullstacksam23/GitSecure/internal/db"
 )
 
-func RunFullScan(ctx context.Context, repo string) error {
+func RunFullScan(ctx context.Context, repo, jobID string) error {
 
 	pkgs, sbom, err := getDependencies(repo)
 	if err != nil {
@@ -43,17 +45,26 @@ func RunFullScan(ctx context.Context, repo string) error {
 	}
 	log.Println("Grype response generated...")
 	// Normalize IDs
-	vulns := NormalizeGrype(grypeResp, canonicalMap)
+	vulns := NormalizeGrype(grypeResp, canonicalMap, jobID)
 
 	//Enrich grype with OSV data
 	vulns = DeduplicateVulns(MergeOSVData(vulns, advisories, canonicalMap))
 
+	log.Println("Vulns list generated")
+
+	err = db.InsertVulns(ctx, vulns)
+	if err != nil {
+		log.Println("Error Inserting vulns into supabase")
+		return err
+	}
+	log.Println("Supabase Updated")
+
 	for _, v := range vulns {
-		log.Println(v.ID, v.Package, v.Version, v.Severity, v.Source)
+		log.Println(v.ID, v.Package, v.Version, v.Severity, v.Source, v.JobID)
 		log.Println("URLS count:" + strconv.Itoa(len(v.Urls)))
 		log.Println("Fix count: " + strconv.Itoa(len(v.FixVersion)))
 	}
-	//TODO: Store the pkgs in db (maybe supabase) and update job status
+
 	//TODO: Also create handlers for db related functionality for user to get current status and job results
 	return nil
 }

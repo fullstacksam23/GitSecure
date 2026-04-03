@@ -6,20 +6,40 @@ CREATE TABLE scan_jobs (
 );
 
 CREATE TABLE vulnerabilities (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    job_id TEXT REFERENCES scan_jobs(job_id),
+    id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
 
-    vuln_id TEXT,
     package TEXT,
     version TEXT,
-
     severity TEXT,
     summary TEXT,
 
     urls TEXT[],
-    fix_versions TEXT[],
+    fix_version TEXT[],
+    fix_state TEXT,
 
-    source TEXT
+    risk DOUBLE PRECISION,
+    namespace TEXT,
+
+    match_type TEXT,
+    version_constraint TEXT,
+
+    data_source TEXT,
+    source TEXT,
+
+    cwe_ids TEXT[],
+    ecosystem TEXT,
+
+    created_at TIMESTAMP DEFAULT now(),
+
+    -- relationships
+    CONSTRAINT fk_job
+        FOREIGN KEY(job_id)
+        REFERENCES scan_jobs(job_id)
+        ON DELETE CASCADE,
+
+    -- composite primary key
+    PRIMARY KEY (id, job_id)
 );
 
 CREATE INDEX idx_job ON vulnerabilities(job_id);
