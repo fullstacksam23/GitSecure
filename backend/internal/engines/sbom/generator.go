@@ -1,6 +1,7 @@
 package sbom
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,26 +9,30 @@ import (
 	"github.com/fullstacksam23/GitSecure/internal/core"
 )
 
-func ExtractDependenciesManual(repo string) ([]core.Package, error) {
+func ExtractDependenciesManual(repo string) ([]core.Package, []byte, error) {
 	dir, err := getRepo(repo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sbomPath := dir + "/sbom.json"
 
 	err = generateSbom(dir, sbomPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	f, err := os.Open(sbomPath)
+	data, err := os.ReadFile(sbomPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer f.Close()
 
-	return ExtractDependencies(f)
+	pkgs, err := ExtractDependencies(bytes.NewReader(data))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pkgs, data, nil
 }
 
 func getRepo(repo string) (string, error) {

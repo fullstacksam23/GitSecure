@@ -13,6 +13,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+//TODO: REFACTOR THE MODELS FOLDER -- GET RID OF MODELS FOLDER AND PUT EACH MODEL IN THEIR PACKAGE -- SHARED MODELS IN CORE
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 

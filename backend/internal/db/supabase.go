@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 
@@ -39,7 +40,7 @@ func InsertVulns(ctx context.Context, vulns []models.UnifiedVuln) error {
 	return nil
 }
 
-func InsertJob(job interface{}) error {
+func InsertJob(job models.ScanJob) error {
 	if Client == nil {
 		return errors.New("client not initialized")
 	}
@@ -64,4 +65,53 @@ func UpdateJobStatus(jobID string, updates map[string]interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func CheckExistingJob(repo, commitHash string) (*models.ScanJob, []models.UnifiedVuln, error) {
+	if Client == nil {
+		return nil, nil, errors.New("client not initialized")
+	}
+
+	// 1️⃣ Get job
+	data, _, err := Client.
+		From("scan_jobs").
+		Select("*", "", false).
+		Eq("repo", repo).
+		Eq("commit_hash", commitHash).
+		Limit(1, "").
+		Execute()
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var jobs []models.ScanJob
+	if err := json.Unmarshal(data, &jobs); err != nil {
+		return nil, nil, err
+	}
+
+	if len(jobs) == 0 {
+		// no cache
+		return nil, nil, nil
+	}
+
+	job := jobs[0]
+
+	// 2️⃣ Get vulnerabilities using job_id
+	vulnData, _, err := Client.
+		From("vulnerabilities").
+		Select("*", "", false).
+		Eq("job_id", job.JobID).
+		Execute()
+
+	if err != nil {
+		return &job, nil, err
+	}
+
+	var vulns []models.UnifiedVuln
+	if err := json.Unmarshal(vulnData, &vulns); err != nil {
+		return &job, nil, err
+	}
+
+	return &job, vulns, nil
 }

@@ -38,7 +38,7 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 	//sbom not available in this case
 	if resp.StatusCode == 404 {
 		log.Println("SBOM not available... parsing manually")
-		pkgs, err = ExtractDependenciesManual(repoName)
+		pkgs, body, err = ExtractDependenciesManual(repoName)
 		if err != nil {
 			return nil, nil, err
 		}

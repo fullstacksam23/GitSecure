@@ -13,14 +13,14 @@ import (
 
 func RunFullScan(ctx context.Context, repo, jobID string) error {
 
-	pkgs, sbom, err := sbom.GetDependencies(repo)
+	pkgs, _, err := sbom.GetDependencies(repo)
 	if err != nil {
 		return err
 	}
 	log.Println("Dependencies Extracted: ")
 
 	advisories, err := osv.FetchAllOSVAdvisories(pkgs)
-	// log.Println(advisories)
+
 	if err != nil {
 		return err
 	}
@@ -35,11 +35,12 @@ func RunFullScan(ctx context.Context, repo, jobID string) error {
 	log.Println("Setting advisory id with right priority...")
 
 	// Run grype
-	raw, err := grype.GrypeScan(sbom)
+	_, syftSBOM, err := sbom.ExtractDependenciesManual(repo)
 	if err != nil {
-		log.Println("Grype error:", string(raw))
 		return err
 	}
+
+	raw, err := grype.GrypeScan(syftSBOM)
 
 	// Parse grype JSON
 	grypeResp, err := grype.ParseGrype(raw)

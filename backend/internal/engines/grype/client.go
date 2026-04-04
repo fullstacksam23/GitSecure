@@ -7,32 +7,21 @@ import (
 	"path/filepath"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
+	"github.com/google/uuid"
 )
 
 func GrypeScan(sbom []byte) ([]byte, error) {
-
-	var wrapper models.SBOMResponse
-	err := json.Unmarshal(sbom, &wrapper)
-	if err != nil {
-		return nil, err
-	}
-
-	actualSBOM, err := json.Marshal(wrapper.SBOM)
-	if err != nil {
-		return nil, err
-	}
-
 	tmpDir := os.TempDir()
-	sbomPath := filepath.Join(tmpDir, "sbom.json")
+	sbomPath := filepath.Join(tmpDir, "sbom-"+uuid.New().String()+".json")
 
-	err = os.WriteFile(sbomPath, actualSBOM, 0644)
+	err := os.WriteFile(sbomPath, sbom, 0644)
 	if err != nil {
 		return nil, err
 	}
 
 	cmd := exec.Command("grype", "sbom:"+sbomPath, "-o", "json")
 
-	output, err := cmd.CombinedOutput() //returns both the std output and err
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return output, err
 	}
