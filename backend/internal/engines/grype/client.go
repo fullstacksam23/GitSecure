@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
 	"github.com/google/uuid"
@@ -73,6 +74,7 @@ func NormalizeGrype(grype GrypeResponse, canonical map[string]string, jobID stri
 
 			DataSource: match.Vulnerability.DataSource,
 			Source:     "grype",
+			Ecosystem:  extractEcosystemFromPurl(match.Artifact.Purl),
 		}
 		vulns = append(vulns, v)
 	}
@@ -103,4 +105,19 @@ func pickBestMatch(details []MatchDetail) (string, string) {
 	}
 
 	return "", ""
+}
+
+func extractEcosystemFromPurl(purl string) string {
+	switch {
+	case strings.HasPrefix(purl, "pkg:npm"):
+		return "npm"
+	case strings.HasPrefix(purl, "pkg:pypi"):
+		return "pypi"
+	case strings.HasPrefix(purl, "pkg:golang"):
+		return "golang"
+	case strings.HasPrefix(purl, "pkg:maven"):
+		return "maven"
+	default:
+		return "unknown"
+	}
 }

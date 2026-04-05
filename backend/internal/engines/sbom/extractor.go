@@ -3,6 +3,7 @@ package sbom
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -26,12 +27,21 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 		Timeout: 15 * time.Second,
 	}
 
-	resp, err := client.Get(sbomURL)
+	req, _ := http.NewRequest("GET", sbomURL, nil)
 
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := client.Do(req)
 	if err != nil {
-		return pkgs, nil, err
+		return pkgs, nil, nil
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Println("GitHub error:", resp.StatusCode, string(body))
+		return nil, nil, fmt.Errorf("github api failed")
+	}
 	defer resp.Body.Close()
 
 	//sbom not available in this case
