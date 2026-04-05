@@ -1,7 +1,6 @@
 package sbom
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,7 +26,7 @@ func ExtractDependenciesManual(repo string) ([]core.Package, []byte, error) {
 		return nil, nil, err
 	}
 
-	pkgs, err := ExtractDependencies(bytes.NewReader(data))
+	pkgs, err := ExtractDependencies(data)
 	if err != nil {
 		return nil, nil, err
 	}

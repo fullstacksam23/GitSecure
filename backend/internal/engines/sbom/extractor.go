@@ -1,7 +1,6 @@
 package sbom
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -34,53 +33,65 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 	}
 
 	defer resp.Body.Close()
-	var body []byte
+
 	//sbom not available in this case
 	if resp.StatusCode == 404 {
 		log.Println("SBOM not available... parsing manually")
-		pkgs, body, err = ExtractDependenciesManual(repoName)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-
-		body, err = io.ReadAll(resp.Body)
+		pkgs, sbom, err := ExtractDependenciesManual(repoName)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		pkgs, err = ExtractDependencies(bytes.NewReader(body))
-		if err != nil {
-			return nil, nil, err
-		}
+		return pkgs, sbom, nil
 	}
-	return pkgs, body, nil
 
-}
-
-func parseSbom(r io.Reader) (models.SPDXDocument, error) {
-	data, err := io.ReadAll(r)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return models.SPDXDocument{}, err
+		return nil, nil, err
 	}
 
-	// github sbom formatting returns a SBOMResponse
-	var wrapper models.SBOMResponse
-	if err := json.Unmarshal(data, &wrapper); err == nil && len(wrapper.SBOM.Packages) > 0 {
-		return wrapper.SBOM, nil
+	cleanSbom, err := parseSbom(body)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// manual syft sbom formatting returns a SPDXDocument
-	var doc models.SPDXDocument
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return models.SPDXDocument{}, err
+	pkgs, err = ExtractDependencies(cleanSbom)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return doc, nil
+	return pkgs, cleanSbom, nil
+
 }
 
-func ExtractDependencies(r io.Reader) ([]core.Package, error) {
-	doc, err := parseSbom(r)
+func parseSbom(data []byte) ([]byte, error) {
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+
+	// github api gives an extra sbom field
+	if sbomRaw, ok := raw["sbom"]; ok {
+		sbomBytes, err := json.Marshal(sbomRaw)
+		if err != nil {
+			return nil, err
+		}
+		return sbomBytes, nil //return with the extra {sbom: {}} removed
+	}
+
+	// Already SPDX returned by syft validate structure
+	if _, ok := raw["spdxVersion"]; ok {
+		return data, nil
+	}
+
+	return nil, errors.New("unsupported SBOM format")
+}
+
+func ExtractDependencies(sbom []byte) ([]core.Package, error) {
+
+	var doc models.SPDXDocument
+	err := json.Unmarshal(sbom, &doc)
 	if err != nil {
 		return nil, err
 	}

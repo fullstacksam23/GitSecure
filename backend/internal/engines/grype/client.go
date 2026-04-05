@@ -2,6 +2,7 @@ package grype
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,12 +19,13 @@ func GrypeScan(sbom []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer os.Remove(sbomPath)
 
 	cmd := exec.Command("grype", "sbom:"+sbomPath, "-o", "json")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return output, err
+		return output, fmt.Errorf("grype failed: %w\n%s", err, string(output))
 	}
 
 	return output, nil

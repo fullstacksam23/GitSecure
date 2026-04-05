@@ -2,7 +2,9 @@ package scanner
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
@@ -31,62 +33,52 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	repoFullPath := fmt.Sprintf("%s/%s", owner, repo)
+
+	exists, existingJob, err := db.CheckExistingJob(repoFullPath)
+	if err != nil {
+		http.Error(w, "Error checking if job cached or not", http.StatusInternalServerError)
+		return
+	}
+
+	var job models.ScanJob
 	hash, err := getCurrentCommitHash(owner, repo)
+	if err != nil {
+		log.Println("error getting current commit hash", err)
+		http.Error(w, "Error while getting repo details - check private repo???", http.StatusInternalServerError)
+		return
+	}
 
-	//check if result is cached
-	if err == nil {
+	if exists && hash == existingJob.CommitHash {
+		job = *existingJob
+	} else {
 
-		existingJob, vulns, err := db.CheckExistingJob(repoFullPath, hash)
+		job = models.ScanJob{
+			JobID:      uuid.New().String(),
+			Repo:       repoFullPath,
+			Status:     "queued",
+			CommitHash: hash,
+		}
+
+		q := redis.NewRedisQueue("localhost:6379", "scan_queue")
+
+		err = q.Enqueue(ctx, job)
 		if err != nil {
-			http.Error(w, "error checking job", http.StatusBadRequest)
+			http.Error(w, "failed to enqueue job", http.StatusInternalServerError)
 			return
 		}
 
-		if existingJob != nil && existingJob.Status == "completed" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"cached": true,
-				"job_id": existingJob.JobID,
-				"status": existingJob.Status,
-				"repo":   existingJob.Repo,
-				"vulns":  vulns,
-			})
+		err = db.InsertJob(job)
+		if err != nil {
+			http.Error(w, "Error updating supabase job status", http.StatusInternalServerError)
 			return
 		}
-	}
-
-	job := models.ScanJob{
-		JobID:      uuid.New().String(),
-		Repo:       repoFullPath,
-		Status:     "queued",
-		CommitHash: hash,
-	}
-
-	q := redis.NewRedisQueue("localhost:6379", "scan_queue")
-
-	err = q.Enqueue(ctx, job)
-	if err != nil {
-		http.Error(w, "failed to enqueue job", http.StatusInternalServerError)
-		return
-	}
-
-	err = db.InsertJob(job)
-	if err != nil {
-		http.Error(w, "Error updating supabase job status", http.StatusInternalServerError)
-		return
 	}
 
 	// return response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"job_id": job.JobID,
-		"repo":   job.Repo,
-		"status": "queued",
-	})
+	json.NewEncoder(w).Encode(job)
 }
 
 type Repo struct {
@@ -108,7 +100,7 @@ func getCurrentCommitHash(owner, repo string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch repo info: %s", resp.Status)
+		return "", errors.New("unable to get repo info to check default branch - check private repo???")
 	}
 
 	var r Repo

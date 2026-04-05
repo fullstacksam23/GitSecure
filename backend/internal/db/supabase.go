@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -67,51 +68,37 @@ func UpdateJobStatus(jobID string, updates map[string]interface{}) error {
 	return nil
 }
 
-func CheckExistingJob(repo, commitHash string) (*models.ScanJob, []models.UnifiedVuln, error) {
+func CheckExistingJob(repoFullPath string) (bool, *models.ScanJob, error) {
 	if Client == nil {
-		return nil, nil, errors.New("client not initialized")
+		return false, nil, errors.New("client not initialized")
 	}
 
-	// 1️⃣ Get job
 	data, _, err := Client.
 		From("scan_jobs").
 		Select("*", "", false).
-		Eq("repo", repo).
-		Eq("commit_hash", commitHash).
+		Eq("repo", repoFullPath).
+		Eq("status", "complete").
+		Order("created_at", &postgrest.OrderOpts{
+			Ascending: false, // DESC
+		}).
 		Limit(1, "").
 		Execute()
 
 	if err != nil {
-		return nil, nil, err
+		return false, nil, err
 	}
+	var result []models.ScanJob
 
-	var jobs []models.ScanJob
-	if err := json.Unmarshal(data, &jobs); err != nil {
-		return nil, nil, err
-	}
-
-	if len(jobs) == 0 {
-		// no cache
-		return nil, nil, nil
-	}
-
-	job := jobs[0]
-
-	// 2️⃣ Get vulnerabilities using job_id
-	vulnData, _, err := Client.
-		From("vulnerabilities").
-		Select("*", "", false).
-		Eq("job_id", job.JobID).
-		Execute()
-
+	err = json.Unmarshal(data, &result)
 	if err != nil {
-		return &job, nil, err
+		log.Println("json unmarshalling error", err)
+		return false, nil, err
 	}
 
-	var vulns []models.UnifiedVuln
-	if err := json.Unmarshal(vulnData, &vulns); err != nil {
-		return &job, nil, err
+	if len(result) == 0 {
+		log.Println("data not cached")
+		return false, nil, nil
 	}
 
-	return &job, vulns, nil
+	return true, &result[0], nil
 }

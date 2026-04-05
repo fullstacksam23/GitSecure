@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"log"
-	"strconv"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/engines/grype"
@@ -13,7 +12,7 @@ import (
 
 func RunFullScan(ctx context.Context, repo, jobID string) error {
 
-	pkgs, _, err := sbom.GetDependencies(repo)
+	pkgs, sbom, err := sbom.GetDependencies(repo)
 	if err != nil {
 		return err
 	}
@@ -34,13 +33,10 @@ func RunFullScan(ctx context.Context, repo, jobID string) error {
 
 	log.Println("Setting advisory id with right priority...")
 
-	// Run grype
-	_, syftSBOM, err := sbom.ExtractDependenciesManual(repo)
+	raw, err := grype.GrypeScan(sbom)
 	if err != nil {
 		return err
 	}
-
-	raw, err := grype.GrypeScan(syftSBOM)
 
 	// Parse grype JSON
 	grypeResp, err := grype.ParseGrype(raw)
@@ -62,12 +58,6 @@ func RunFullScan(ctx context.Context, repo, jobID string) error {
 		return err
 	}
 	log.Println("Supabase Updated")
-
-	for _, v := range vulns {
-		log.Println(v.ID, v.Package, v.Version, v.Severity, v.Source, v.JobID)
-		log.Println("URLS count:" + strconv.Itoa(len(v.Urls)))
-		log.Println("Fix count: " + strconv.Itoa(len(v.FixVersion)))
-	}
 
 	//TODO: Also create handlers for db related functionality for user to get current status and job results
 	return nil
