@@ -16,7 +16,7 @@ const navItems = [
   { to: "/compare", label: "Compare" },
 ];
 
-export default function AppShell() {
+export default function AppShell({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -86,7 +86,7 @@ export default function AppShell() {
             </div>
           ) : null}
 
-          <Outlet />
+          {children || <Outlet />}
         </div>
       </div>
     </div>

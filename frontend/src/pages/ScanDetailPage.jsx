@@ -55,11 +55,6 @@ export default function ScanDetailPage() {
     placeholderData: (previous) => previous,
   });
 
-  const comparisonOptionsQuery = useQuery({
-    queryKey: ["compare-options"],
-    queryFn: () => api.getScans({ page: 1, pageSize: 50 }),
-  });
-
   const scan = scanQuery.data;
   const rows = vulnsQuery.data?.items || [];
   const pagination = vulnsQuery.data?.pagination;
@@ -124,7 +119,7 @@ export default function ScanDetailPage() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            <Button variant="secondary" onClick={() => navigate(`/compare?base=${jobId}&target=${comparisonOptionsQuery.data?.items?.[0]?.job_id || ""}`)}>
+            <Button variant="secondary" onClick={() => navigate(`/compare?base=${jobId}`)}>
               <GitCompareArrows className="h-4 w-4" />
               Compare
             </Button>

@@ -19,7 +19,6 @@ export default function DashboardPage() {
   }
 
   const summary = summaryQuery.data;
-
   return (
     <div className="space-y-6 pb-8">
       <div>

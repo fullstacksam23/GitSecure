@@ -6,6 +6,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
@@ -31,9 +32,35 @@ type ScanListFilter struct {
 	Status   string
 }
 
+type scanRow struct {
+	JobID      string  `json:"job_id"`
+	Repo       string  `json:"repo"`
+	Status     string  `json:"status"`
+	CommitHash *string `json:"commit_hash"`
+	CreatedAt  string  `json:"created_at"`
+}
+
+type scanDetailRow struct {
+	JobID      string  `json:"job_id"`
+	Repo       string  `json:"repo"`
+	Status     string  `json:"status"`
+	CommitHash *string `json:"commit_hash"`
+	CreatedAt  string  `json:"created_at"`
+}
+
+var dashboardSummaryCache = struct {
+	mu        sync.RWMutex
+	value     models.DashboardSummary
+	expiresAt time.Time
+}{}
+
 func GetDashboardSummary() (models.DashboardSummary, error) {
 	if Client == nil {
 		return models.DashboardSummary{}, errors.New("client not initialized")
+	}
+
+	if cached, ok := getCachedDashboardSummary(); ok {
+		return cached, nil
 	}
 
 	summary := models.DashboardSummary{}
@@ -90,6 +117,8 @@ func GetDashboardSummary() (models.DashboardSummary, error) {
 	}
 	summary.RiskTrend = trend
 
+	cacheDashboardSummary(summary)
+
 	return summary, nil
 }
 
@@ -126,9 +155,19 @@ func ListScans(filter ScanListFilter) ([]models.ScanListItem, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	var rows []models.ScanListItem
-	if err := json.Unmarshal(data, &rows); err != nil {
+	var rawRows []scanRow
+	if err := json.Unmarshal(data, &rawRows); err != nil {
 		return nil, 0, err
+	}
+	rows := make([]models.ScanListItem, 0, len(rawRows))
+	for _, row := range rawRows {
+		rows = append(rows, models.ScanListItem{
+			JobID:      row.JobID,
+			Repo:       row.Repo,
+			Status:     row.Status,
+			CommitHash: stringOrEmpty(row.CommitHash),
+			CreatedAt:  row.CreatedAt,
+		})
 	}
 
 	if len(rows) == 0 {
@@ -162,7 +201,7 @@ func GetScanByID(jobID string) (*models.ScanDetails, error) {
 		return nil, errors.New("client not initialized")
 	}
 
-	var baseRows []models.ScanDetails
+	var baseRows []scanDetailRow
 	_, err := Client.
 		From("scan_jobs").
 		Select("job_id,repo,status,commit_hash,created_at", "", false).
@@ -176,7 +215,13 @@ func GetScanByID(jobID string) (*models.ScanDetails, error) {
 		return nil, nil
 	}
 
-	scan := baseRows[0]
+	scan := models.ScanDetails{
+		JobID:      baseRows[0].JobID,
+		Repo:       baseRows[0].Repo,
+		Status:     baseRows[0].Status,
+		CommitHash: stringOrEmpty(baseRows[0].CommitHash),
+		CreatedAt:  baseRows[0].CreatedAt,
+	}
 	vulns, err := listVulnerabilitiesForJob(jobID)
 	if err != nil {
 		return nil, err
@@ -559,11 +604,12 @@ func listTopRiskPackages(jobID string, limit int) ([]models.PackageRiskItem, err
 }
 
 func listRepoSummaries(limit int) ([]models.RepoSummary, error) {
-	var scans []models.ScanListItem
+	var scans []scanRow
 	_, err := Client.
 		From("scan_jobs").
 		Select("job_id,repo,status,commit_hash,created_at", "", false).
 		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		Limit(max(limit*6, 24), "").
 		ExecuteTo(&scans)
 	if err != nil {
 		return nil, err
@@ -609,13 +655,26 @@ func listRepoSummaries(limit int) ([]models.RepoSummary, error) {
 }
 
 func getRiskTrend(days int) ([]models.TrendPoint, error) {
+	now := time.Now().UTC()
+
+	start := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		0, 0, 0, 0, time.UTC,
+	).AddDate(0, 0, -(days - 1))
+
+	startTime := start.Format(time.RFC3339)
+
 	var scanRows []struct {
 		CreatedAt string `json:"created_at"`
 	}
+
 	_, err := Client.
 		From("scan_jobs").
 		Select("created_at", "", false).
+		Gte("created_at", startTime).
+		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
 		ExecuteTo(&scanRows)
+
 	if err != nil {
 		return nil, err
 	}
@@ -623,32 +682,49 @@ func getRiskTrend(days int) ([]models.TrendPoint, error) {
 	var vulnRows []struct {
 		CreatedAt string `json:"created_at"`
 	}
+
 	_, err = Client.
 		From("vulnerabilities").
 		Select("created_at", "", false).
+		Gte("created_at", startTime).
+		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
 		ExecuteTo(&vulnRows)
+
 	if err != nil {
 		return nil, err
 	}
 
-	now := time.Now().UTC()
-	start := now.AddDate(0, 0, -(days - 1))
 	points := make([]models.TrendPoint, 0, days)
-	indexByDate := map[string]int{}
+	indexByDate := make(map[string]int)
+
 	for i := 0; i < days; i++ {
 		day := start.AddDate(0, 0, i).Format("2006-01-02")
+
 		indexByDate[day] = len(points)
-		points = append(points, models.TrendPoint{Date: day})
+		points = append(points, models.TrendPoint{
+			Date: day,
+		})
 	}
 
 	for _, row := range scanRows {
-		day := isoDay(row.CreatedAt)
+		createdAt, err := parseTimestamp(row.CreatedAt)
+		if err != nil {
+			continue
+		}
+		day := createdAt.UTC().Format("2006-01-02")
+
 		if index, ok := indexByDate[day]; ok {
 			points[index].Scans++
 		}
 	}
+
 	for _, row := range vulnRows {
-		day := isoDay(row.CreatedAt)
+		createdAt, err := parseTimestamp(row.CreatedAt)
+		if err != nil {
+			continue
+		}
+		day := createdAt.UTC().Format("2006-01-02")
+
 		if index, ok := indexByDate[day]; ok {
 			points[index].Vulnerabilities++
 		}
@@ -850,14 +926,6 @@ func sortVulnerabilities(items []models.VulnerabilityRecord) {
 	})
 }
 
-func isoDay(value string) string {
-	parsed, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return ""
-	}
-	return parsed.UTC().Format("2006-01-02")
-}
-
 func escapeLike(value string) string {
 	replacer := strings.NewReplacer(",", `\,`, "(", `\(`, ")", `\)`)
 	return replacer.Replace(value)
@@ -868,4 +936,56 @@ func totalPages(total int64, pageSize int) int {
 		return 0
 	}
 	return int(math.Ceil(float64(total) / float64(pageSize)))
+}
+
+func getCachedDashboardSummary() (models.DashboardSummary, bool) {
+	dashboardSummaryCache.mu.RLock()
+	defer dashboardSummaryCache.mu.RUnlock()
+
+	if time.Now().Before(dashboardSummaryCache.expiresAt) {
+		return dashboardSummaryCache.value, true
+	}
+
+	return models.DashboardSummary{}, false
+}
+
+func cacheDashboardSummary(summary models.DashboardSummary) {
+	dashboardSummaryCache.mu.Lock()
+	defer dashboardSummaryCache.mu.Unlock()
+
+	dashboardSummaryCache.value = summary
+	dashboardSummaryCache.expiresAt = time.Now().Add(15 * time.Second)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func stringOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func parseTimestamp(value string) (time.Time, error) {
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05.999999999",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed, nil
+		}
+	}
+
+	return time.Time{}, errors.New("unable to parse timestamp: " + value)
 }
