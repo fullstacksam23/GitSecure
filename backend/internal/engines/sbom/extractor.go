@@ -34,14 +34,9 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return pkgs, nil, nil
+		return pkgs, nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Println("GitHub error:", resp.StatusCode, string(body))
-		return nil, nil, fmt.Errorf("github api failed")
-	}
 	defer resp.Body.Close()
 
 	//sbom not available in this case
@@ -53,6 +48,11 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 		}
 
 		return pkgs, sbom, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Println("GitHub error:", resp.StatusCode, string(body))
+		return nil, nil, fmt.Errorf("github api failed")
 	}
 
 	body, err := io.ReadAll(resp.Body)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -102,8 +103,8 @@ func MergeOSVData(vulns []models.UnifiedVuln, advisories map[string]models.OSVAd
 
 		vulns[i].Urls = addUniqueUrls(vulns[i].Urls, osvUrls)
 
-		if len(adv.Severity) > 0 {
-			vulns[i].Severity = adv.Severity[0].Score
+		if shouldUseDatabaseSeverity(vulns[i].Severity, adv.DatabaseSpecific.Severity) {
+			vulns[i].Severity = adv.DatabaseSpecific.Severity
 		}
 		vulns[i].CWEIDs = adv.DatabaseSpecific.CWEIDs
 
@@ -174,6 +175,20 @@ func deduplicateVulns(vulns []models.UnifiedVuln) []models.UnifiedVuln {
 	}
 
 	return result
+}
+
+func shouldUseDatabaseSeverity(current, candidate string) bool {
+	candidate = strings.TrimSpace(candidate)
+	if candidate == "" {
+		return false
+	}
+
+	current = strings.TrimSpace(current)
+	if current == "" {
+		return true
+	}
+
+	return strings.HasPrefix(strings.ToUpper(current), "CVSS:")
 }
 
 func getOSVAdvisory(id string) (models.OSVAdvisory, error) {

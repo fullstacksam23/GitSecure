@@ -12,6 +12,8 @@ import (
 
 func RunFullScan(ctx context.Context, repo, jobID string) error {
 
+	log.Println(repo, jobID)
+
 	pkgs, sbom, err := sbom.GetDependencies(repo)
 	if err != nil {
 		return err

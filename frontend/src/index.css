@@ -1,0 +1,72 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 31% 8%;
+    --foreground: 210 20% 96%;
+    --card: 222 28% 11%;
+    --card-foreground: 210 20% 96%;
+    --primary: 192 92% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 221 22% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 221 20% 14%;
+    --muted-foreground: 215 12% 65%;
+    --accent: 218 23% 17%;
+    --accent-foreground: 210 20% 96%;
+    --border: 0 0% 100% / 0.07;
+    --input: 220 18% 18%;
+    --ring: 192 92% 60%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 28%),
+      radial-gradient(circle at 85% 0%, rgba(249, 115, 22, 0.08), transparent 24%),
+      linear-gradient(180deg, #070b12 0%, #0a1018 48%, #0b1119 100%);
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)];
+  }
+
+  .panel {
+    @apply rounded-3xl border border-white/10 bg-white/[0.03] shadow-[0_24px_80px_rgba(0,0,0,0.32)] backdrop-blur-xl;
+  }
+
+  .panel-muted {
+    @apply rounded-3xl border border-white/10 bg-white/[0.02];
+  }
+
+  .surface {
+    @apply rounded-2xl border border-white/10 bg-[#0d141d];
+  }
+
+  .grid-overlay {
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 36px 36px;
+    background-position: center center;
+  }
+}

@@ -18,6 +18,7 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		Owner string `json:"owner"`
 		Repo  string `json:"repo"`
 	}
+
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -28,6 +29,8 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 
 	owner := req.Owner
 	repo := req.Repo
+
+	log.Println(owner, repo)
 	if owner == "" || repo == "" {
 		http.Error(w, "both owner and repo should be specfied", http.StatusBadRequest)
 		return

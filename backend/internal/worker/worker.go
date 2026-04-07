@@ -51,6 +51,12 @@ func StartWorker(ctx context.Context) {
 			err = scanner.RunFullScan(ctx, job.Repo, job.JobID)
 			if err != nil {
 				log.Println("Scan failed:", err)
+				updateErr := db.UpdateJobStatus(job.JobID, map[string]interface{}{
+					"status": "failed",
+				})
+				if updateErr != nil {
+					log.Println("Queue error:", updateErr)
+				}
 				continue
 			}
 

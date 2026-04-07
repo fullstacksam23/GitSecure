@@ -1,45 +1,18 @@
-CREATE TABLE IF NOT EXISTS scan_jobs (
-    job_id TEXT PRIMARY KEY,
-    repo TEXT NOT NULL,
-    status TEXT NOT NULL,
-    commit_hash TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+ALTER TABLE scan_jobs
+    ADD COLUMN IF NOT EXISTS commit_hash TEXT;
 
-CREATE TABLE IF NOT EXISTS vulnerabilities (
-    job_id TEXT NOT NULL,
-    id TEXT NOT NULL,
-    package TEXT NOT NULL,
-    version TEXT NOT NULL,
+ALTER TABLE vulnerabilities
+    ALTER COLUMN package SET NOT NULL,
+    ALTER COLUMN version SET NOT NULL;
 
-    severity TEXT,
-    summary TEXT,
+ALTER TABLE vulnerabilities
+    DROP CONSTRAINT IF EXISTS vulnerabilities_pkey;
 
-    urls TEXT[],
-    fix_version TEXT[],
-    fix_state TEXT,
+ALTER TABLE vulnerabilities
+    ADD CONSTRAINT vulnerabilities_pkey PRIMARY KEY (job_id, id, package, version);
 
-    risk DOUBLE PRECISION,
-    namespace TEXT,
-
-    match_type TEXT,
-    version_constraint TEXT,
-
-    data_source TEXT,
-    source TEXT,
-
-    cwe_ids TEXT[],
-    ecosystem TEXT,
-
-    created_at TIMESTAMPTZ DEFAULT now(),
-
-    CONSTRAINT fk_job
-        FOREIGN KEY(job_id)
-        REFERENCES scan_jobs(job_id)
-        ON DELETE CASCADE,
-
-    PRIMARY KEY (job_id, id, package, version)
-);
+DROP INDEX IF EXISTS idx_job;
+DROP INDEX IF EXISTS idx_vuln_id;
 
 CREATE INDEX IF NOT EXISTS idx_vulnerabilities_job_id ON vulnerabilities(job_id);
 CREATE INDEX IF NOT EXISTS idx_vulnerabilities_id ON vulnerabilities(id);
