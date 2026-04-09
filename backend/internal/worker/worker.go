@@ -63,7 +63,7 @@ func StartWorker(ctx context.Context) {
 			log.Println("Scan complete:", job.JobID)
 
 			err = db.UpdateJobStatus(job.JobID, map[string]interface{}{
-				"status": "complete",
+				"status": "completed",
 			})
 			if err != nil {
 				log.Println("Queue error:", err)

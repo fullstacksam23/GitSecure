@@ -51,7 +51,7 @@ func GetVulnerabilityHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	record, err := db.GetVulnerabilityByID(id, r.URL.Query().Get("job_id"))
+	record, err := db.GetVulnerabilityByID(id, r.URL.Query().Get("job_id"), r.URL.Query().Get("package"))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load vulnerability")
 		return

@@ -44,7 +44,7 @@ export default function ScansPage() {
             <option value="">All statuses</option>
             <option value="queued">Queued</option>
             <option value="running">Running</option>
-            <option value="complete">Completed</option>
+            <option value="completed">Completed</option>
             <option value="failed">Failed</option>
           </select>
         </div>

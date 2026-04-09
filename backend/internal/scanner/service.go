@@ -8,6 +8,8 @@ import (
 	"github.com/fullstacksam23/GitSecure/internal/engines/grype"
 	"github.com/fullstacksam23/GitSecure/internal/engines/osv"
 	"github.com/fullstacksam23/GitSecure/internal/engines/sbom"
+	"github.com/fullstacksam23/GitSecure/internal/models"
+	"golang.org/x/sync/errgroup"
 )
 
 func RunFullScan(ctx context.Context, repo, jobID string) error {
@@ -20,32 +22,59 @@ func RunFullScan(ctx context.Context, repo, jobID string) error {
 	}
 	log.Println("Dependencies Extracted: ")
 
-	advisories, err := osv.FetchAllOSVAdvisories(pkgs)
+	g, ctx := errgroup.WithContext(ctx)
 
-	if err != nil {
+	//variables used in the goroutines
+	var (
+		advisories   map[string]models.OSVAdvisory
+		canonicalMap map[string]string
+		grypeResp    grype.GrypeResponse
+	)
+
+	//Run OSV Pipeline
+	g.Go(func() error {
+		advs, err := osv.FetchAllOSVAdvisories(pkgs)
+
+		if err != nil {
+			return err
+		}
+		log.Println("OSV API queried...")
+
+		graph := osv.BuildVulnGraph(advs)
+
+		cMap := graph.CanonicalMap()
+		canonicalMap = cMap
+
+		advs = osv.CanonicalizeAdvisories(advs, cMap)
+		advisories = advs
+
+		log.Println("Setting advisory id with right priority...")
+		return nil
+	})
+
+	//Run Grype Pipeline
+	g.Go(func() error {
+		raw, err := grype.GrypeScan(sbom)
+		if err != nil {
+			return err
+		}
+
+		gResp, err := grype.ParseGrype(raw)
+		if err != nil {
+			return err
+		}
+		grypeResp = gResp
+
+		log.Println("Grype response generated...")
+
+		return nil
+	})
+
+	//Wait for the 2 parallel go routines to finish and log if any errors
+	if err := g.Wait(); err != nil {
+		log.Println("Pipeline Failed: ", err)
 		return err
 	}
-	log.Println("OSV API queried...")
-
-	graph := osv.BuildVulnGraph(advisories)
-
-	canonicalMap := graph.CanonicalMap()
-
-	advisories = osv.CanonicalizeAdvisories(advisories, canonicalMap)
-
-	log.Println("Setting advisory id with right priority...")
-
-	raw, err := grype.GrypeScan(sbom)
-	if err != nil {
-		return err
-	}
-
-	// Parse grype JSON
-	grypeResp, err := grype.ParseGrype(raw)
-	if err != nil {
-		return err
-	}
-	log.Println("Grype response generated...")
 	// Normalize IDs
 	vulns := grype.NormalizeGrype(grypeResp, canonicalMap, jobID)
 
@@ -61,6 +90,5 @@ func RunFullScan(ctx context.Context, repo, jobID string) error {
 	}
 	log.Println("Supabase Updated")
 
-	//TODO: Also create handlers for db related functionality for user to get current status and job results
 	return nil
 }

@@ -46,6 +46,8 @@ func InsertJob(job models.ScanJob) error {
 		return errors.New("client not initialized")
 	}
 
+	job.Status = NormalizeJobStatus(job.Status)
+
 	_, _, err := Client.From("scan_jobs").Insert(job, false, "", "", "").Execute()
 	if err != nil {
 		return err
@@ -55,6 +57,10 @@ func InsertJob(job models.ScanJob) error {
 func UpdateJobStatus(jobID string, updates map[string]interface{}) error {
 	if Client == nil {
 		return errors.New("client not initialized")
+	}
+
+	if status, ok := updates["status"].(string); ok {
+		updates["status"] = NormalizeJobStatus(status)
 	}
 
 	_, _, err := Client.
@@ -77,7 +83,7 @@ func CheckExistingJob(repoFullPath string) (bool, *models.ScanJob, error) {
 		From("scan_jobs").
 		Select("*", "", false).
 		Eq("repo", repoFullPath).
-		Eq("status", "complete").
+		In("status", []string{"complete", "completed"}).
 		Order("created_at", &postgrest.OrderOpts{
 			Ascending: false, // DESC
 		}).
@@ -99,6 +105,8 @@ func CheckExistingJob(repoFullPath string) (bool, *models.ScanJob, error) {
 		log.Println("data not cached")
 		return false, nil, nil
 	}
+
+	result[0].Status = NormalizeJobStatus(result[0].Status)
 
 	return true, &result[0], nil
 }

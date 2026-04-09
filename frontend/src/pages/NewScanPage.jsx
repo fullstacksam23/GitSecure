@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -8,12 +8,18 @@ import { Input } from "../components/ui/input";
 
 export default function NewScanPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
 
   const mutation = useMutation({
     mutationFn: api.startScan,
     onSuccess: (job) => {
+      queryClient.invalidateQueries({ queryKey: ["scans"] });
+      queryClient.invalidateQueries({ queryKey: ["sidebar-scans"] });
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+      queryClient.invalidateQueries({ queryKey: ["compare-scans-list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       toast.success("Scan queued");
       navigate(`/scans/${job.job_id}`);
     },

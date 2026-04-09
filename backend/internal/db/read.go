@@ -3,7 +3,6 @@ package db
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -164,7 +163,7 @@ func ListScans(filter ScanListFilter) ([]models.ScanListItem, int64, error) {
 		rows = append(rows, models.ScanListItem{
 			JobID:      row.JobID,
 			Repo:       row.Repo,
-			Status:     row.Status,
+			Status:     NormalizeJobStatus(row.Status),
 			CommitHash: stringOrEmpty(row.CommitHash),
 			CreatedAt:  row.CreatedAt,
 		})
@@ -218,7 +217,7 @@ func GetScanByID(jobID string) (*models.ScanDetails, error) {
 	scan := models.ScanDetails{
 		JobID:      baseRows[0].JobID,
 		Repo:       baseRows[0].Repo,
-		Status:     baseRows[0].Status,
+		Status:     NormalizeJobStatus(baseRows[0].Status),
 		CommitHash: stringOrEmpty(baseRows[0].CommitHash),
 		CreatedAt:  baseRows[0].CreatedAt,
 	}
@@ -276,7 +275,7 @@ func ListVulnerabilities(filter VulnerabilityFilter) ([]models.VulnerabilityReco
 	return items, count, facets, nil
 }
 
-func GetVulnerabilityByID(id, jobID string) (*models.VulnerabilityRecord, error) {
+func GetVulnerabilityByID(id, jobID, packageName string) (*models.VulnerabilityRecord, error) {
 	if Client == nil {
 		return nil, errors.New("client not initialized")
 	}
@@ -288,6 +287,9 @@ func GetVulnerabilityByID(id, jobID string) (*models.VulnerabilityRecord, error)
 
 	if strings.TrimSpace(jobID) != "" {
 		query = query.Eq("job_id", jobID)
+	}
+	if strings.TrimSpace(packageName) != "" {
+		query = query.Eq("package", packageName)
 	}
 
 	var items []models.VulnerabilityRecord
@@ -624,7 +626,7 @@ func listRepoSummaries(limit int) ([]models.RepoSummary, error) {
 		}
 		repoLatest[scan.Repo] = models.RepoSummary{
 			Repo:        scan.Repo,
-			Status:      scan.Status,
+			Status:      NormalizeJobStatus(scan.Status),
 			LastJobID:   scan.JobID,
 			LastScanned: scan.CreatedAt,
 			TopSeverity: "unknown",
@@ -929,13 +931,6 @@ func sortVulnerabilities(items []models.VulnerabilityRecord) {
 func escapeLike(value string) string {
 	replacer := strings.NewReplacer(",", `\,`, "(", `\(`, ")", `\)`)
 	return replacer.Replace(value)
-}
-
-func totalPages(total int64, pageSize int) int {
-	if total == 0 || pageSize <= 0 {
-		return 0
-	}
-	return int(math.Ceil(float64(total) / float64(pageSize)))
 }
 
 func getCachedDashboardSummary() (models.DashboardSummary, bool) {

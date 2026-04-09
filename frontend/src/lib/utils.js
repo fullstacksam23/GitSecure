@@ -29,6 +29,32 @@ export function compactNumber(value) {
   }).format(value ?? 0);
 }
 
+export function normalizeRisk(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  const scaled = numeric <= 1 ? numeric * 100 : numeric;
+  return Math.max(0, Math.min(100, scaled));
+}
+
+export function formatRisk(value) {
+  return Math.round(normalizeRisk(value) * 100) / 100;
+}
+
+export function getSeverityRiskFallback(severity) {
+  switch (normalizeSeverity(severity)) {
+    case "critical":
+      return 95;
+    case "high":
+      return 80;
+    case "medium":
+      return 55;
+    case "low":
+      return 25;
+    default:
+      return 0;
+  }
+}
+
 export function normalizeSeverity(value) {
   const text = String(value || "").toLowerCase();
   if (text.includes("critical")) return "critical";

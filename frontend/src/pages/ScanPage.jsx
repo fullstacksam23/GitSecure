@@ -24,7 +24,7 @@ const statusConfig = {
     title: "Scan in progress",
     description: "SBOM extraction and vulnerability analysis are currently running.",
   },
-  complete: {
+  completed: {
     icon: CheckCircle2,
     title: "Scan complete",
     description: "Results are ready to review in the vulnerability explorer.",
@@ -62,7 +62,7 @@ export default function ScanPage() {
   }
 
   useEffect(() => {
-    if (!job?.job_id || ["complete", "failed"].includes(job.status)) return undefined;
+    if (!job?.job_id || ["completed", "failed"].includes(job.status)) return undefined;
 
     const interval = window.setInterval(async () => {
       try {
@@ -78,9 +78,9 @@ export default function ScanPage() {
 
   const statusSteps = useMemo(
     () => [
-      { label: "Queued", active: ["queued", "running", "complete"].includes(status) },
-      { label: "Scanning", active: ["running", "complete"].includes(status) },
-      { label: "Ready", active: status === "complete" },
+      { label: "Queued", active: ["queued", "running", "completed"].includes(status) },
+      { label: "Scanning", active: ["running", "completed"].includes(status) },
+      { label: "Ready", active: status === "completed" },
     ],
     [status]
   );

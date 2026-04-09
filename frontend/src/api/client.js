@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: options.method && options.method !== "GET" ? "default" : "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -89,8 +90,66 @@ export const api = {
     );
   },
 
-  getVulnerabilityById(vulnerabilityId, jobId) {
-    return request(`/vulnerabilities/${vulnerabilityId}${toParams({ job_id: jobId })}`);
+  async getAllVulnerabilities({
+    pageSize = 100,
+    search = "",
+    severity = "",
+    jobId = "",
+    ecosystem = "",
+    fixState = "",
+    sortBy = "created_at",
+    sortOrder = "desc",
+  } = {}) {
+    const firstPage = await api.getVulnerabilities({
+      page: 1,
+      pageSize,
+      search,
+      severity,
+      jobId,
+      ecosystem,
+      fixState,
+      sortBy,
+      sortOrder,
+    });
+
+    const totalPages = firstPage?.pagination?.total_pages || 1;
+    if (totalPages <= 1) {
+      return firstPage;
+    }
+
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        api.getVulnerabilities({
+          page: index + 2,
+          pageSize,
+          search,
+          severity,
+          jobId,
+          ecosystem,
+          fixState,
+          sortBy,
+          sortOrder,
+        })
+      )
+    );
+
+    const items = [firstPage, ...rest].flatMap((page) => page?.items || []);
+
+    return {
+      ...firstPage,
+      items,
+      pagination: {
+        ...firstPage.pagination,
+        page: 1,
+        page_size: items.length,
+        total_items: items.length,
+        total_pages: 1,
+      },
+    };
+  },
+
+  getVulnerabilityById(vulnerabilityId, jobId, packageName) {
+    return request(`/vulnerabilities/${vulnerabilityId}${toParams({ job_id: jobId, package: packageName })}`);
   },
 
   startScan({ owner, repo }) {

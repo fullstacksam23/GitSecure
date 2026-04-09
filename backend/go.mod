@@ -9,6 +9,7 @@ require (
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/supabase-community/postgrest-go v0.0.11
 	github.com/supabase-community/supabase-go v0.0.4
+	golang.org/x/sync v0.20.0
 )
 
 require (

@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: options.method && options.method !== "GET" ? "default" : "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -75,9 +76,10 @@ export const api = {
     return request(`/vulnerabilities?${params.toString()}`);
   },
 
-  getVulnerabilityById(vulnerabilityId, jobId) {
+  getVulnerabilityById(vulnerabilityId, jobId, packageName) {
     const params = new URLSearchParams();
     if (jobId) params.set("job_id", jobId);
+    if (packageName) params.set("package", packageName);
     const suffix = params.toString() ? `?${params.toString()}` : "";
     return request(`/vulnerabilities/${vulnerabilityId}${suffix}`);
   },
