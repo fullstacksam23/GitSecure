@@ -9,7 +9,7 @@ import (
 	"github.com/fullstacksam23/GitSecure/internal/scanner"
 )
 
-func StartWorker(ctx context.Context) {
+func StartWorker(ctx context.Context, githubToken string) {
 
 	q := redis.NewRedisQueue("localhost:6379", "scan_queue")
 
@@ -48,7 +48,7 @@ func StartWorker(ctx context.Context) {
 			}
 			log.Println("Processing job:", job.JobID)
 
-			err = scanner.RunFullScan(ctx, job.Repo, job.JobID)
+			err = scanner.RunFullScan(ctx, job.Repo, job.JobID, githubToken)
 			if err != nil {
 				log.Println("Scan failed:", err)
 				updateErr := db.UpdateJobStatus(job.JobID, map[string]interface{}{

@@ -35,9 +35,15 @@ func main() {
 
 	mode := os.Getenv("MODE")
 
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	if githubToken == "" {
+		log.Fatal("GITHUB_TOKEN not set")
+	}
+
 	if mode == "worker" {
+
 		fmt.Println("Starting worker...")
-		worker.StartWorker(ctx)
+		worker.StartWorker(ctx, githubToken)
 		return
 	}
 

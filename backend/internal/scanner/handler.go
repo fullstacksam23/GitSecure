@@ -2,10 +2,10 @@ package scanner
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
 	"github.com/fullstacksam23/GitSecure/internal/models"
@@ -84,55 +84,45 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(job)
 }
 
-type Repo struct {
-	DefaultBranch string `json:"default_branch"`
-}
+func BatchScan(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Language  string `json:"language"`
+		RepoCount int    `json:"repo_count"`
+	}
 
-type CommitResponse struct {
-	SHA string `json:"sha"`
-}
-
-func getCurrentCommitHash(owner, repo string) (string, error) {
-	repoFullName := owner + "/" + repo
-
-	// Step 1: Get repo info to get default branch
-	resp, err := http.Get("https://api.github.com/repos/" + repoFullName)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return "", err
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
 	}
-	defer resp.Body.Close()
+	// get the context from the request
+	// ctx := r.Context()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("unable to get repo info to check default branch - check private repo???")
+	if req.Language == "" || req.RepoCount <= 0 {
+		http.Error(w, "both language and repo count should be specified for batch request", http.StatusBadRequest)
+		return
+	}
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	if githubToken == "" {
+		http.Error(w, "Github token not set", http.StatusInternalServerError)
 	}
 
-	var r Repo
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", err
+	//create batch job
+	batchJob := models.BatchJob{
+		BatchID:        uuid.NewString(),
+		Language:       req.Language,
+		Status:         "pending",
+		RepoCount:      req.RepoCount,
+		CompletedRepos: 0,
 	}
-
-	// Step 2: Get latest commit from default branch
-	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/commits/%s",
-		owner,
-		repo,
-		r.DefaultBranch,
-	)
-
-	resp, err = http.Get(url)
+	err = db.CreateBatchJob(batchJob)
 	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch commit: %s", resp.Status)
+		http.Error(w, "Error Inserting batch job into supabase", http.StatusInternalServerError)
+		return
 	}
 
-	var commit CommitResponse
-	if err := json.NewDecoder(resp.Body).Decode(&commit); err != nil {
-		return "", err
-	}
+	repos, err := GetRepos(req.Language, githubToken, req.RepoCount)
 
-	return commit.SHA, nil
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(repos)
 }

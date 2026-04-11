@@ -15,7 +15,7 @@ import (
 	"github.com/fullstacksam23/GitSecure/internal/models"
 )
 
-func GetDependencies(repoName string) ([]core.Package, []byte, error) {
+func GetDependencies(repoName, githubToken string) ([]core.Package, []byte, error) {
 	var pkgs []core.Package
 	log.Println("trying to fetch sbom using github api...")
 	if repoName == "" {
@@ -29,6 +29,7 @@ func GetDependencies(repoName string) ([]core.Package, []byte, error) {
 
 	req, _ := http.NewRequest("GET", sbomURL, nil)
 
+	req.Header.Set("Authorization", "Bearer "+githubToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 

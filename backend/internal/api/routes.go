@@ -21,5 +21,6 @@ func loadRoutes() *chi.Mux {
 	router.Get("/vulnerabilities", ListVulnerabilitiesHandler)
 	router.Get("/vulnerabilities/{id}", GetVulnerabilityHandler)
 
+	router.Get("/batch/scan", scanner.BatchScan)
 	return router
 }
