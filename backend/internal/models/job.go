@@ -1,13 +1,13 @@
 package models
 
 type ScanJob struct {
-	JobID      string `json:"job_id"`
-	BatchID    string `json:"batch_id"`
-	Repo       string `json:"repo"`
-	Status     string `json:"status"`
-	CommitHash string `json:"commit_hash"`
-	RepoID     int    `json:"repo_id"`
-	JobType    string `json:"job_type"`
+	JobID      string  `json:"job_id"`
+	BatchID    *string `json:"batch_id"`
+	Repo       string  `json:"repo"`
+	Status     string  `json:"status"`
+	CommitHash string  `json:"commit_hash"`
+	RepoID     int     `json:"repo_id"`
+	JobType    string  `json:"job_type"`
 }
 
 type BatchJob struct {

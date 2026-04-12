@@ -9,6 +9,9 @@ const HistoryPage = lazy(() => import("./pages/HistoryPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
 const ScanDetailPage = lazy(() => import("./pages/ScanDetailPage"));
 const NewScanPage = lazy(() => import("./pages/NewScanPage"));
+const EcosystemBatchesPage = lazy(() => import("./pages/EcosystemBatchesPage"));
+const BatchDetailPage = lazy(() => import("./pages/BatchDetailPage"));
+const NewEcosystemScanPage = lazy(() => import("./pages/NewEcosystemScanPage"));
 
 function App() {
   return (
@@ -20,6 +23,9 @@ function App() {
           <Route path="/scans" element={<ScansPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/ecosystem/batches" element={<EcosystemBatchesPage />} />
+          <Route path="/ecosystem/new-scan" element={<NewEcosystemScanPage />} />
+          <Route path="/ecosystem/batches/:batchId" element={<BatchDetailPage />} />
           <Route path="/scans/:jobId" element={<ScanDetailPage />} />
           <Route path="/new-scan" element={<NewScanPage />} />
         </Route>

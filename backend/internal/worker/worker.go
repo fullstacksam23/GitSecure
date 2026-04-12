@@ -40,7 +40,7 @@ func StartWorker(ctx context.Context, githubToken string) {
 			}
 
 			if job.JobType == "batch" {
-				err = db.MarkBatchRunning(job.BatchID)
+				err = db.MarkBatchRunning(*job.BatchID)
 				if err != nil {
 					log.Println("Error marking batch scanjob as running", err)
 					continue
@@ -80,7 +80,7 @@ func StartWorker(ctx context.Context, githubToken string) {
 			}
 
 			if job.JobType == "batch" {
-				err := db.IncrementBatchProgress(job.BatchID)
+				err := db.IncrementBatchProgress(*job.BatchID)
 				if err != nil {
 					log.Printf("failed to update batch progress for %s: %v", job.BatchID, err)
 				}

@@ -102,7 +102,6 @@ func isNonProject(repo Repo) bool {
 // hasDependencyFile checks whether any of the known dependency filenames exist
 // at the root of the repo's default branch via the GitHub contents API.
 func hasDependencyFile(repo Repo, files []string, token string) (bool, error) {
-	client := &http.Client{}
 
 	for _, file := range files {
 		url := fmt.Sprintf(
@@ -119,7 +118,7 @@ func hasDependencyFile(repo Repo, files []string, token string) (bool, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/vnd.github+json")
 
-		resp, err := client.Do(req)
+		resp, err := Client.Do(req)
 		if err != nil {
 			return false, err
 		}

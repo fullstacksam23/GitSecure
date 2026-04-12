@@ -11,6 +11,7 @@ import { Input } from "../ui/input";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/ecosystem/batches", label: "Ecosystem Batches" },
   { to: "/scans", label: "All Scans" },
   { to: "/history", label: "History" },
   { to: "/compare", label: "Compare" },

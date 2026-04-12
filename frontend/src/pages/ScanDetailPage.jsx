@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, GitCompareArrows } from "lucide-react";
+import { ArrowLeft, Download, GitCompareArrows } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
@@ -35,6 +35,7 @@ export default function ScanDetailPage() {
   const sortOrder = searchParams.get("sort_order") || "desc";
   const selectedId = searchParams.get("selected") || "";
   const selectedPackage = searchParams.get("selected_package") || "";
+  const batchId = searchParams.get("batch") || "";
   const vulnerabilitiesQueryKey = useMemo(
     () => ["vulns", "all", jobId, severityKey, ecosystem, fixState, debouncedSearch],
     [jobId, severityKey, ecosystem, fixState, debouncedSearch]
@@ -142,6 +143,12 @@ export default function ScanDetailPage() {
       <div className="panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
+            {batchId ? (
+              <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(`/ecosystem/batches/${batchId}`)}>
+                <ArrowLeft className="h-4 w-4" />
+                Back to batch
+              </Button>
+            ) : null}
             <p className="text-sm uppercase tracking-[0.28em] text-cyan-300">Scan Details</p>
             <h1 className="mt-3 text-3xl font-semibold text-white">{scan.repo}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">

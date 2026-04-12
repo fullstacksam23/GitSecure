@@ -27,7 +27,10 @@ func GetDependencies(repoName, githubToken string) ([]core.Package, []byte, erro
 		Timeout: 15 * time.Second,
 	}
 
-	req, _ := http.NewRequest("GET", sbomURL, nil)
+	req, err := http.NewRequest("GET", sbomURL, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	req.Header.Set("Authorization", "Bearer "+githubToken)
 	req.Header.Set("Accept", "application/vnd.github+json")

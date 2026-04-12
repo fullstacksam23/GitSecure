@@ -2,6 +2,7 @@ package sbom
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 
@@ -50,12 +51,14 @@ func getRepo(repo string) (string, error) {
 		fmt.Println("Repo exists... running git fetch")
 		fetchCmd := exec.Command("git", "-C", dir, "fetch", "--depth", "1")
 		if output, err := fetchCmd.CombinedOutput(); err != nil {
-			return fmt.Sprintf("fetch failed: %v\n%s", err, output), err
+			log.Println("fetch failed: ", err, string(output))
+			return "", err
 		}
 
 		resetCmd := exec.Command("git", "-C", dir, "reset", "--hard", "origin/HEAD")
 		if output, err := resetCmd.CombinedOutput(); err != nil {
-			return fmt.Sprintf("reset failed: %v\n%s", err, output), nil
+			log.Println("reset failed: ", err, string(output))
+			return "", err
 		}
 
 	}

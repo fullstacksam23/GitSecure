@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/fullstacksam23/GitSecure/internal/db"
@@ -59,24 +60,50 @@ func StartScan(w http.ResponseWriter, r *http.Request) {
 		job = *existingJob
 	} else {
 
+		githubToken := os.Getenv("GITHUB_TOKEN")
+		if githubToken == "" {
+			http.Error(w, "Github token not set", http.StatusInternalServerError)
+			return
+		}
+		repoDetails, err := GetRepoDetails(owner, repo, githubToken)
+		if err != nil {
+			log.Println("Error fetching repo details: ", err)
+			http.Error(w, "Error fetching repo details:", http.StatusInternalServerError)
+			return
+		}
+		repoRecord := models.EcosystemRepo{
+			BatchID:  nil,
+			RepoName: repoFullPath,
+			Stars:    repoDetails.Stars,
+		}
+		id, err := db.InsertRepo(repoRecord)
+
+		if err != nil {
+			log.Println("Error inserting job: ", err)
+			http.Error(w, "Error inserting job: ", http.StatusInternalServerError)
+			return
+		}
+
 		job = models.ScanJob{
 			JobID:      uuid.New().String(),
-			BatchID:    "",
+			BatchID:    nil,
 			Repo:       repoFullPath,
 			Status:     "queued",
 			CommitHash: hash,
+			RepoID:     int(*id),
 			JobType:    "single",
+		}
+
+		err = db.InsertJob(job)
+		if err != nil {
+			log.Println("Error inserting scan job: ", err)
+			http.Error(w, "Error updating supabase job status", http.StatusInternalServerError)
+			return
 		}
 
 		err = q.Enqueue(ctx, job)
 		if err != nil {
 			http.Error(w, "failed to enqueue job", http.StatusInternalServerError)
-			return
-		}
-
-		err = db.InsertJob(job)
-		if err != nil {
-			http.Error(w, "Error updating supabase job status", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -94,10 +121,15 @@ func BatchScan(w http.ResponseWriter, r *http.Request) {
 		RepoCount int    `json:"repo_count"`
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
+	if r.Method == http.MethodGet {
+		req.Language = strings.TrimSpace(r.URL.Query().Get("language"))
+		req.RepoCount, _ = strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("repo_count")))
+	} else {
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
 	}
 
 	if req.Language == "" || req.RepoCount <= 0 {
@@ -147,7 +179,7 @@ func ProcessBatchRepos(ctx context.Context, repos []Repo, batchID string) error 
 	ecosystemRepos := make([]models.EcosystemRepo, len(repos))
 	for i, curr := range repos {
 		ecosystemRepos[i] = models.EcosystemRepo{
-			BatchID:  batchID,
+			BatchID:  &batchID,
 			RepoName: curr.FullName,
 			Stars:    curr.Stars,
 			RepoRank: i + 1,
@@ -173,12 +205,18 @@ func ProcessBatchRepos(ctx context.Context, repos []Repo, batchID string) error 
 
 		job := models.ScanJob{
 			JobID:      uuid.NewString(),
-			BatchID:    batchID,
+			BatchID:    &batchID,
 			Repo:       repoName,
 			Status:     "queued",
 			CommitHash: hash,
 			RepoID:     int(repoID),
 			JobType:    "batch",
+		}
+
+		err = db.InsertJob(job)
+		if err != nil {
+			log.Printf("Error Inserting job (batch) into supabase: %v", err)
+			return err
 		}
 
 		err = q.Enqueue(ctx, job)
@@ -187,11 +225,6 @@ func ProcessBatchRepos(ctx context.Context, repos []Repo, batchID string) error 
 			return err
 		}
 
-		err = db.InsertJob(job)
-		if err != nil {
-			log.Printf("Error Inserting job (batch) into supabase: %v", err)
-			return err
-		}
 	}
 	return nil
 }

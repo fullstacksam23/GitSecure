@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/fullstacksam23/GitSecure/internal/models"
@@ -54,6 +55,32 @@ func InsertJob(job models.ScanJob) error {
 	}
 	return nil
 }
+
+func InsertRepo(repo models.EcosystemRepo) (*int64, error) {
+	if Client == nil {
+		return nil, errors.New("client not initialized")
+	}
+
+	data, _, err := Client.From("ecosystem_repos").
+		Insert(repo, false, "", "representation", "").
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert repo: %w", err)
+	}
+
+	var insertedRepos []models.EcosystemRepo
+	if err := json.Unmarshal(data, &insertedRepos); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal returned repos: %w", err)
+	}
+
+	if len(insertedRepos) == 0 {
+		return nil, errors.New("no repo returned after insert")
+	}
+
+	id := insertedRepos[0].ID
+	return &id, nil
+}
+
 func UpdateJobStatus(jobID string, updates map[string]interface{}) error {
 	if Client == nil {
 		return errors.New("client not initialized")

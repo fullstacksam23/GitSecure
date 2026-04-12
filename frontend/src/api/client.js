@@ -60,6 +60,51 @@ export const api = {
     return request(`/scans/${jobId}`);
   },
 
+  getEcosystemBatches({ page = 1, pageSize = 20, status = "", language = "", search = "" } = {}) {
+    return request(
+      `/ecosystem/batches${toParams({
+        page,
+        page_size: pageSize,
+        status,
+        language,
+        search,
+      })}`
+    );
+  },
+
+  getEcosystemBatch(batchId) {
+    return request(`/ecosystem/batches/${batchId}`);
+  },
+
+  getEcosystemBatchSummary(batchId) {
+    return request(`/ecosystem/batches/${batchId}/summary`);
+  },
+
+  getEcosystemBatchRepos(
+    batchId,
+    {
+      page = 1,
+      pageSize = 20,
+      search = "",
+      status = "",
+      severity = "",
+      sortBy = "rank",
+      sortOrder = "asc",
+    } = {}
+  ) {
+    return request(
+      `/ecosystem/batches/${batchId}/repos${toParams({
+        page,
+        page_size: pageSize,
+        search,
+        status,
+        severity,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      })}`
+    );
+  },
+
   compareScans({ base, target }) {
     return request(`/scans/compare${toParams({ base, target })}`);
   },
@@ -157,5 +202,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ owner, repo }),
     });
+  },
+
+  startBatchScan({ language, repoCount }) {
+    return request(
+      `/batch/scan${toParams({
+        language,
+        repo_count: repoCount,
+      })}`
+    );
   },
 };
