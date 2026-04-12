@@ -1,126 +1,50 @@
-create type severity_level as enum ('low', 'medium', 'high', 'critical');
+CREATE TABLE ecosystem_batches (
+    batch_id TEXT PRIMARY KEY,
 
-create table public.ecosystem_scans (
-  batch_id text not null,
-  language text not null,
-  status text check (status in ('pending', 'running', 'completed', 'failed')) default 'pending',
+    language TEXT NOT NULL,
 
-  repo_count int not null,
-  completed_repos int default 0,
+    repo_count INT NOT NULL,         -- requested number (user input)
+    total_repos INT DEFAULT 0,       -- actual fetched
+    completed_repos INT DEFAULT 0,   -- progress tracking
 
-  created_at timestamp without time zone default now(),
-  completed_at timestamp without time zone null,
+    status TEXT NOT NULL,            -- pending, running, completed, failed
 
-  constraint ecosystem_scans_pkey primary key (batch_id)
+    created_at TIMESTAMPTZ DEFAULT now(),
+    completed_at TIMESTAMPTZ
 );
 
-create index idx_ecosystem_scans_created_at 
-on public.ecosystem_scans (created_at desc);
+CREATE TABLE ecosystem_repos (
+    id BIGSERIAL PRIMARY KEY,
 
+    batch_id TEXT NOT NULL,
 
-create table public.ecosystem_repos (
-  id bigserial primary key,
-  batch_id text not null,
-  repo text not null,
+    repo_name TEXT NOT NULL, -- full_name (owner/repo)
+    stars INT,
+    forks INT,
+    repo_rank INT, -- position in top X
 
-  stars int,
-  rank int,
-
-  created_at timestamp without time zone default now(),
-
-  constraint fk_ecosystem_repos_batch
-  foreign key (batch_id) references ecosystem_scans(batch_id) on delete cascade
+    CONSTRAINT fk_batch
+        FOREIGN KEY(batch_id)
+        REFERENCES ecosystem_batches(batch_id)
+        ON DELETE CASCADE
 );
 
-create index idx_ecosystem_repos_batch 
-on public.ecosystem_repos (batch_id);
+CREATE OR REPLACE FUNCTION increment_batch_progress(batch_id TEXT)
+RETURNS void AS $$
+BEGIN
+    UPDATE ecosystem_batches
+    SET 
+        completed_repos = completed_repos + 1,
+        status = CASE 
+            WHEN completed_repos + 1 >= total_repos THEN 'completed'
+            ELSE 'running'
+        END,
+        completed_at = CASE 
+            WHEN completed_repos + 1 >= total_repos THEN now()
+            ELSE completed_at
+        END
+    WHERE ecosystem_batches.batch_id = increment_batch_progress.batch_id;
+END;
+$$ LANGUAGE plpgsql;
 
-create index idx_ecosystem_repos_repo 
-on public.ecosystem_repos (repo);
-
-create table public.vuln_catalog (
-  normalized_id text primary key,  -- CVE/GHSA canonical ID
-
-  severity severity_level,
-  summary text,
-  urls text[],
-  cwe_ids text[],
-
-  created_at timestamp default now()
-);
-
-create table public.ecosystem_vulnerabilities (
-  id bigserial primary key,
-
-  batch_id text not null,
-  repo text not null,
-
-  package text not null,
-  version text not null,
-
-  normalized_id text not null,
-
-  fix_version text[],
-  fix_state text,
-  risk double precision,
-
-  namespace text,
-  match_type text,
-  version_constraint text,
-  data_source text,
-  source text,
-  ecosystem text,
-
-  created_at timestamp without time zone default now(),
-
-  constraint fk_ecosystem_vulns_batch
-  foreign key (batch_id) references ecosystem_scans(batch_id) on delete cascade,
-
-  constraint fk_vuln_catalog
-  foreign key (normalized_id) references vuln_catalog(normalized_id)
-);
-
-create unique index uniq_ecosystem_vuln_entry
-on public.ecosystem_vulnerabilities (
-  batch_id, repo, package, version, normalized_id
-);
-
--- batch filtering
-create index idx_ecosystem_vulns_batch 
-on public.ecosystem_vulnerabilities (batch_id);
-
--- aggregation (top CVEs)
-create index idx_ecosystem_vulns_normalized 
-on public.ecosystem_vulnerabilities (normalized_id);
-
--- package stats
-create index idx_ecosystem_vulns_package 
-on public.ecosystem_vulnerabilities (package);
-
--- severity via join (optional optimization)
-create index idx_vuln_catalog_severity 
-on public.vuln_catalog (severity);
-
--- time sorting
-create index idx_ecosystem_vulns_created_at 
-on public.ecosystem_vulnerabilities (created_at desc);
-
-create table public.ecosystem_stats (
-  id bigserial primary key,
-  batch_id text not null,
-
-  stat_type text check (stat_type in ('cve', 'package', 'severity')),
-  key text not null,
-  count int not null,
-
-  created_at timestamp default now(),
-
-  constraint fk_ecosystem_stats_batch
-  foreign key (batch_id) references ecosystem_scans(batch_id) on delete cascade
-);
-
-create index idx_ecosystem_stats_batch 
-on public.ecosystem_stats (batch_id);
-
-create index idx_ecosystem_stats_type 
-on public.ecosystem_stats (stat_type);
+CREATE INDEX idx_batches_status ON ecosystem_batches(status);

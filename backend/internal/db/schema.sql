@@ -1,9 +1,12 @@
 CREATE TABLE IF NOT EXISTS scan_jobs (
     job_id TEXT PRIMARY KEY,
+    batch_id TEXT,
     repo TEXT NOT NULL,
     status TEXT NOT NULL,
     commit_hash TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    repo_id BIGINT,
+    job_type TEXT DEFAULT 'single'
 );
 
 CREATE TABLE IF NOT EXISTS vulnerabilities (
@@ -116,3 +119,7 @@ SELECT
 FROM scan_jobs sj
 LEFT JOIN vulnerability_records vr ON vr.job_id = sj.job_id
 GROUP BY sj.job_id, sj.repo, sj.status, sj.commit_hash, sj.created_at;
+
+
+CREATE INDEX idx_scan_jobs_batch_id ON scan_jobs(batch_id);
+CREATE INDEX idx_scan_jobs_repo_id ON scan_jobs(repo_id);

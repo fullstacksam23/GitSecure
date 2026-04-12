@@ -39,6 +39,14 @@ func StartWorker(ctx context.Context, githubToken string) {
 				continue
 			}
 
+			if job.JobType == "batch" {
+				err = db.MarkBatchRunning(job.BatchID)
+				if err != nil {
+					log.Println("Error marking batch scanjob as running", err)
+					continue
+				}
+			}
+
 			err = db.UpdateJobStatus(job.JobID, map[string]interface{}{
 				"status": "running",
 			})
@@ -46,6 +54,7 @@ func StartWorker(ctx context.Context, githubToken string) {
 				log.Println("Queue error:", err)
 				continue
 			}
+
 			log.Println("Processing job:", job.JobID)
 
 			err = scanner.RunFullScan(ctx, job.Repo, job.JobID, githubToken)
@@ -69,7 +78,15 @@ func StartWorker(ctx context.Context, githubToken string) {
 				log.Println("Queue error:", err)
 				continue
 			}
-			//TODO: ERROR HANDLING AND PASS CONTEXT TO THE DB UPDATE AND INTSERT FUNCTIONS
+
+			if job.JobType == "batch" {
+				err := db.IncrementBatchProgress(job.BatchID)
+				if err != nil {
+					log.Printf("failed to update batch progress for %s: %v", job.BatchID, err)
+				}
+
+			}
+			//TODO: ERROR HANDLING AND PASS CONTEXT TO THE DB UPDATE AND INSERT FUNCTIONS
 		}
 	}
 }

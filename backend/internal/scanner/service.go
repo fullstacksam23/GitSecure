@@ -92,13 +92,3 @@ func RunFullScan(ctx context.Context, repo, jobID, githubToken string) error {
 
 	return nil
 }
-
-// func RunBatchScan(ctx context.Context, repo, batchID, githubToken string) error {
-// 	log.Println(repo, jobID)
-
-// 	pkgs, sbom, err := sbom.GetDependencies(repo, githubToken)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	log.Println("Dependencies Extracted: ")
-// }
