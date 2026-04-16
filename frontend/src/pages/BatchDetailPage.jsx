@@ -210,14 +210,14 @@ export default function BatchDetailPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search repositories" className="w-[240px]" />
-            <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={status} onChange={(event) => updateParam("status", event.target.value)}>
+            <select className="app-select" value={status} onChange={(event) => updateParam("status", event.target.value)}>
               <option value="">All scan statuses</option>
               <option value="queued">Queued</option>
               <option value="running">Running</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
             </select>
-            <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={severity} onChange={(event) => updateParam("severity", event.target.value)}>
+            <select className="app-select" value={severity} onChange={(event) => updateParam("severity", event.target.value)}>
               <option value="">All severities</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>

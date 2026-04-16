@@ -1,5 +1,8 @@
 import { normalizeRisk, normalizeSeverity, severityOrder } from "./utils";
 
+export const NO_KNOWN_VULNERABILITIES_STATUS = "no_known_vulnerabilities";
+export const NO_KNOWN_VULNERABILITIES_LABEL = "No Known Vulnerabilities";
+
 export function isActiveBatchStatus(status) {
   return ["queued", "running"].includes(String(status || "").toLowerCase());
 }
@@ -62,7 +65,10 @@ export function getRepoStars(repo) {
 }
 
 export function getRepoStatus(repo) {
-  return repo?.scan_status || repo?.status || "unknown";
+  const status = String(repo?.scan_status || repo?.status || "").trim().toLowerCase();
+  if (status) return status;
+
+  return getRepoVulnerabilityCount(repo) === 0 ? NO_KNOWN_VULNERABILITIES_STATUS : "unknown";
 }
 
 export function getRepoVulnerabilityCount(repo) {

@@ -27,7 +27,7 @@ const columns = [
   { id: "repo", label: "Repository" },
   { id: "stars", label: "Stars" },
   { id: "rank", label: "Rank" },
-  { id: "status", label: "Scan status" },
+  { id: "status", label: "Vulnerability status" },
   { id: "vulnerability_count", label: "Vulnerabilities" },
   { id: "top_severity", label: "Top severity" },
 ];
@@ -75,6 +75,7 @@ export default function RepoTable({ batchId, items = [], sortBy, sortOrder, onSo
             const risk = getRepoRiskScore(item);
             const hasJob = Boolean(getRepoJobId(item));
             const isHighlighted = repoName === highlightedRepo;
+            const vulnerabilityCount = getRepoVulnerabilityCount(item);
 
             return (
               <TableRow
@@ -115,11 +116,11 @@ export default function RepoTable({ batchId, items = [], sortBy, sortOrder, onSo
                   </div>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={getRepoStatus(item)} />
+                  <StatusBadge status={getRepoStatus(item)} issueCount={vulnerabilityCount} />
                 </TableCell>
-                <TableCell className="text-slate-100">{getRepoVulnerabilityCount(item)}</TableCell>
+                <TableCell className="text-slate-100">{vulnerabilityCount}</TableCell>
                 <TableCell>
-                  <SeverityBadge severity={topSeverity} />
+                  <SeverityBadge severity={topSeverity} issueCount={vulnerabilityCount} />
                 </TableCell>
               </TableRow>
             );

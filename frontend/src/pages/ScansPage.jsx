@@ -40,7 +40,7 @@ export default function ScansPage() {
         </div>
         <div className="flex gap-3">
           <Input defaultValue={repo} placeholder="Filter by repository" onKeyDown={(event) => event.key === "Enter" && updateParam("repo", event.currentTarget.value)} />
-          <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={status} onChange={(event) => updateParam("status", event.target.value)}>
+          <select className="app-select" value={status} onChange={(event) => updateParam("status", event.target.value)}>
             <option value="">All statuses</option>
             <option value="queued">Queued</option>
             <option value="running">Running</option>

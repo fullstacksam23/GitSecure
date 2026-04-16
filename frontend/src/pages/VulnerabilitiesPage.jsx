@@ -63,7 +63,7 @@ export default function VulnerabilitiesPage() {
           <div className="relative">
             <SlidersHorizontal className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <select
-              className="flex h-11 w-full rounded-xl border border-input bg-white/85 pl-11 pr-4 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="app-select app-select--icon flex w-full pr-4"
               value={severity}
               onChange={(event) => {
                 setPage(1);

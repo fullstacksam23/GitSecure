@@ -68,7 +68,7 @@ export default function EcosystemBatchesPage() {
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => navigate("/ecosystem/new-scan")}>New Ecosystem Scan</Button>
           <Input value={searchInput} placeholder="Search by batch id" onChange={(event) => setSearchInput(event.target.value)} className="w-[240px]" />
-          <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={language} onChange={(event) => updateParam("language", event.target.value)}>
+          <select className="app-select" value={language} onChange={(event) => updateParam("language", event.target.value)}>
             <option value="">All languages</option>
             <option value="go">Go</option>
             <option value="javascript">JavaScript</option>
@@ -76,7 +76,7 @@ export default function EcosystemBatchesPage() {
             <option value="python">Python</option>
             <option value="rust">Rust</option>
           </select>
-          <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={status} onChange={(event) => updateParam("status", event.target.value)}>
+          <select className="app-select" value={status} onChange={(event) => updateParam("status", event.target.value)}>
             <option value="">All statuses</option>
             <option value="queued">Queued</option>
             <option value="running">Running</option>

@@ -39,7 +39,7 @@ export default function FilterBar({
         <select
           value={ecosystem}
           onChange={(event) => onEcosystemChange(event.target.value)}
-          className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200 outline-none"
+          className="app-select"
         >
           <option value="">All ecosystems</option>
           {ecosystems.map((item) => (
@@ -52,7 +52,7 @@ export default function FilterBar({
         <select
           value={fixState}
           onChange={(event) => onFixStateChange(event.target.value)}
-          className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200 outline-none"
+          className="app-select"
         >
           <option value="">All fix states</option>
           {fixStates.map((item) => (

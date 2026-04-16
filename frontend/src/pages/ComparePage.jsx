@@ -39,7 +39,7 @@ export default function ComparePage() {
       </div>
 
       <div className="panel grid gap-4 p-6 md:grid-cols-2">
-        <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={base} onChange={(event) => update("base", event.target.value)}>
+        <select className="app-select" value={base} onChange={(event) => update("base", event.target.value)}>
           <option value="">Select base scan</option>
           {options.map((item) => (
             <option key={item.job_id} value={item.job_id}>
@@ -47,7 +47,7 @@ export default function ComparePage() {
             </option>
           ))}
         </select>
-        <select className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200" value={target} onChange={(event) => update("target", event.target.value)}>
+        <select className="app-select" value={target} onChange={(event) => update("target", event.target.value)}>
           <option value="">Select target scan</option>
           {options.map((item) => (
             <option key={item.job_id} value={item.job_id}>

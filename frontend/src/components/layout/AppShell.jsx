@@ -148,10 +148,10 @@ function Sidebar({ items }) {
                   <p className="truncate text-sm font-medium text-white">{item.repo}</p>
                   <p className="mt-1 text-xs text-slate-500">{formatDate(item.created_at, { dateStyle: "short", timeStyle: "short" })}</p>
                 </div>
-                <SeverityBadge severity={item.top_severity} />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <StatusIndicator status={item.status} />
+                <SeverityBadge severity={item.top_severity} issueCount={Number(item.vulnerability_count || 0)} />
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <StatusIndicator status={item.status} />
                 <span className="text-xs text-slate-400">{item.vulnerability_count} findings</span>
               </div>
             </NavLink>

@@ -63,7 +63,7 @@ export default function NewEcosystemScanPage() {
             <label className="grid gap-2 text-sm text-slate-300">
               Language
               <select
-                className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-200"
+                className="app-select"
                 value={language}
                 onChange={(event) => setLanguage(event.target.value)}
               >

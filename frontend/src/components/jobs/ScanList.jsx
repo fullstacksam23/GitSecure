@@ -25,7 +25,7 @@ export default function ScanList({ items = [], title, compact = false }) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <SeverityBadge severity={item.top_severity} />
+              <SeverityBadge severity={item.top_severity} issueCount={Number(item.vulnerability_count || 0)} />
               <StatusIndicator status={item.status} />
               <Button variant="outline" size="sm" onClick={() => navigate(`/scans/${item.job_id}`)}>
                 View Scan
