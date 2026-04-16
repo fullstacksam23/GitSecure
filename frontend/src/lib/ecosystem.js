@@ -68,7 +68,10 @@ export function getRepoStatus(repo) {
   const status = String(repo?.scan_status || repo?.status || "").trim().toLowerCase();
   if (status) return status;
 
-  return getRepoVulnerabilityCount(repo) === 0 ? NO_KNOWN_VULNERABILITIES_STATUS : "unknown";
+  const vulnerabilityCount = getRepoVulnerabilityCount(repo);
+  const isCompleted = ["completed", "complete"].includes(status);
+
+  return isCompleted && vulnerabilityCount === 0 ? NO_KNOWN_VULNERABILITIES_STATUS : "unknown";
 }
 
 export function getRepoVulnerabilityCount(repo) {

@@ -24,7 +24,7 @@ func GetDependencies(repoName, githubToken string) ([]core.Package, []byte, erro
 	// repoName = "appsecco/dvna" for testing
 	sbomURL := "https://api.github.com/repos/" + repoName + "/dependency-graph/sbom"
 	client := &http.Client{
-		Timeout: 15 * time.Second,
+		Timeout: 45 * time.Second,
 	}
 
 	req, err := http.NewRequest("GET", sbomURL, nil)
@@ -38,25 +38,16 @@ func GetDependencies(repoName, githubToken string) ([]core.Package, []byte, erro
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return pkgs, nil, err
+		log.Printf("github sbom request failed for %s: %v; falling back to manual extraction", repoName, err)
+		return extractDependenciesManualWithReason(repoName, err)
 	}
 
 	defer resp.Body.Close()
 
-	//sbom not available in this case
-	if resp.StatusCode == 404 {
-		log.Println("SBOM not available... parsing manually")
-		pkgs, sbom, err := ExtractDependenciesManual(repoName)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return pkgs, sbom, nil
-	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		fmt.Println("GitHub error:", resp.StatusCode, string(body))
-		return nil, nil, fmt.Errorf("github api failed")
+		log.Printf("github sbom request returned %d for %s: %s", resp.StatusCode, repoName, strings.TrimSpace(string(body)))
+		return extractDependenciesManualWithReason(repoName, fmt.Errorf("github api returned %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -76,6 +67,17 @@ func GetDependencies(repoName, githubToken string) ([]core.Package, []byte, erro
 
 	return pkgs, cleanSbom, nil
 
+}
+
+func extractDependenciesManualWithReason(repoName string, githubErr error) ([]core.Package, []byte, error) {
+	log.Printf("falling back to manual sbom generation for %s", repoName)
+
+	pkgs, sbom, err := ExtractDependenciesManual(repoName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("github sbom request failed (%v) and manual fallback failed: %w", githubErr, err)
+	}
+
+	return pkgs, sbom, nil
 }
 
 func parseSbom(data []byte) ([]byte, error) {

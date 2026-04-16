@@ -32,7 +32,7 @@ export default function RecentScansPanel({ scans = [] }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <SeverityBadge severity={scan.top_severity} issueCount={total} />
+                  <SeverityBadge severity={scan.top_severity} issueCount={total} status={scan.status} />
                   <StatusIndicator status={scan.status} />
                 </div>
               </div>

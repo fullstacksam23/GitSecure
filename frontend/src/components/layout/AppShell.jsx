@@ -100,10 +100,10 @@ function Sidebar({ items }) {
       <div className="grid-overlay border-b border-white/10 px-6 py-6">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/90 text-sm font-semibold text-slate-950">
-            V
+            G
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300">Vulscan</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300">GitSecure</p>
             <h1 className="text-xl font-semibold text-white">Security Platform</h1>
           </div>
         </div>
@@ -148,7 +148,11 @@ function Sidebar({ items }) {
                   <p className="truncate text-sm font-medium text-white">{item.repo}</p>
                   <p className="mt-1 text-xs text-slate-500">{formatDate(item.created_at, { dateStyle: "short", timeStyle: "short" })}</p>
                 </div>
-                <SeverityBadge severity={item.top_severity} issueCount={Number(item.vulnerability_count || 0)} />
+                <SeverityBadge
+                  severity={item.top_severity}
+                  issueCount={Number(item.vulnerability_count || 0)}
+                  status={item.status}
+                />
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <StatusIndicator status={item.status} />

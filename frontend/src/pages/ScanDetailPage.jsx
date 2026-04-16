@@ -161,6 +161,7 @@ export default function ScanDetailPage() {
             <SeverityBadge
               severity={scan.severity_counts?.critical ? "critical" : scan.severity_counts?.high ? "high" : scan.severity_counts?.medium ? "medium" : scan.severity_counts?.low ? "low" : "unknown"}
               issueCount={Number(scan.vulnerability_count || 0)}
+              status={scan.status}
             />
             <StatusIndicator status={scan.status} />
             <Button variant="outline" onClick={exportCsv}>
